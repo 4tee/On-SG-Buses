@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">On SG Buses</string>
-
-    <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
+    <string name="New">New</string>
+    <string name="Settings">Settings</string>
 </resources>
