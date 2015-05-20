@@ -3,8 +3,9 @@
     xmlns:apps="http://schemas.android.com/apk/res-auto"
     tools:context=".MainActivity">
     <item
-        android:id="@+id/action_settings"
-        android:title="@string/Settings"
-        android:orderInCategory="100"
-        apps:showAsAction="never" />
+        android:id="@+id/action_search"
+        android:icon="@android:drawable/ic_menu_search"
+        apps:showAsAction="always"
+        apps:actionViewClass="android.support.v7.widget.SearchView"
+        android:title="Search"/>
 </menu>
