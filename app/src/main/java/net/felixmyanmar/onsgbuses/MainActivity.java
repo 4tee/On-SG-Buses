@@ -27,17 +27,11 @@ import butterknife.OnItemClick;
 
 public class MainActivity extends AppCompatActivity implements SearchView.OnQueryTextListener {
 
-    //    private RecyclerView.LayoutManager mLayoutManager;
-//    private RecyclerView.Adapter mAdapter;
-//    private List<List<String>> myDataset;
     ArrayList<String> allBusNos;
 
+    @InjectView(R.id.cool_listView) ListView listView;
 
-    @InjectView(R.id.cool_listView)
-    ListView listView;
-
-    @OnItemClick(R.id.cool_listView)
-    void onItemClick(int position) {
+    @OnItemClick(R.id.cool_listView) void onItemClick(int position) {
 
         Intent intent = new Intent(this, SearchResultsActivity.class);
         intent.putExtra("service_id", allBusNos.get(position));
@@ -67,13 +61,6 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         listView.setAdapter(adapter);
         listView.setTextFilterEnabled(true);
 
-//        recyclerView.setHasFixedSize(true);
-//
-//        mLayoutManager = new LinearLayoutManager(this);
-//        recyclerView.setLayoutManager(mLayoutManager);
-//
-//        mAdapter = new CoolRecycleViewAdapter(myDataset);
-//        recyclerView.setAdapter(mAdapter);
     }
 
 
