@@ -1,18 +1,20 @@
 package net.felixmyanmar.onsgbuses;
 
+import android.app.ActivityOptions;
 import android.app.SearchManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
+import android.transition.Fade;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -35,7 +37,17 @@ public class MainActivity extends AppCompatActivity {
 
     @OnItemClick(R.id.cool_listView)
     void onItemClick(int position) {
-        Toast.makeText(this, "Clicked position " + allBusNos.get(position) + "!", Toast.LENGTH_SHORT).show();
+
+        Intent intent = new Intent(this, SearchResultsActivity.class);
+        intent.putExtra("service_id", allBusNos.get(position));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setExitTransition(new Fade());
+            startActivity(intent,
+                    ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
+        } else {
+            startActivity(intent);
+        }
     }
 
     @Override
@@ -50,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         allBusNos = myCoolDatabase.getAllBusServices();
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                R.layout.busservice_layout, allBusNos);
+                R.layout.bus_service_item, allBusNos);
         listView.setAdapter(adapter);
 
 //        recyclerView.setHasFixedSize(true);

@@ -3,4 +3,5 @@
     <string name="New">New</string>
     <string name="Settings">Settings</string>
     <string name="search_bus">Search Bus</string>
+    <string name="zero_result">No result</string>
 </resources>
