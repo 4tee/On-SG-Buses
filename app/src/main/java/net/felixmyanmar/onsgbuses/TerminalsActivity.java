@@ -4,6 +4,7 @@ import android.app.SearchManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -18,7 +19,7 @@ import butterknife.ButterKnife;
 import butterknife.InjectView;
 
 
-public class SearchResultsActivity extends AppCompatActivity {
+public class TerminalsActivity extends AppCompatActivity {
 
     ArrayList<BusRoute> busRoutes;
 
@@ -31,11 +32,14 @@ public class SearchResultsActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_search);
+        setContentView(R.layout.activity_terminals);
         ButterKnife.inject(this);
+
+
 
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
 
         handleIntent(getIntent());
     }
@@ -60,7 +64,10 @@ public class SearchResultsActivity extends AppCompatActivity {
         }
 
         if (query!=null) {
-            MyCoolDatabase db = new MyCoolDatabase(this);
+
+            setTitle(query);
+
+            CoolDatabase db = new CoolDatabase(this);
             busRoutes = db.getBusRoute(query);
 
             List<BusTerminal> terminals = new ArrayList<>();
@@ -99,7 +106,7 @@ public class SearchResultsActivity extends AppCompatActivity {
             int visiblity = (busRoutes.size() > 0) ? View.GONE : View.VISIBLE;
             textView.setVisibility(visiblity);
 
-            RecyclerView.Adapter mAdapter = new CoolRecycleViewAdapter((ArrayList) terminals);
+            RecyclerView.Adapter mAdapter = new TerminalsRVAdapter((ArrayList) terminals);
             recyclerView.setAdapter(mAdapter);
         }
     }

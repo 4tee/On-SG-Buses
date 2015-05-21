@@ -11,7 +11,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.text.TextUtils;
 import android.transition.Fade;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -28,13 +27,14 @@ import butterknife.OnItemClick;
 public class MainActivity extends AppCompatActivity implements SearchView.OnQueryTextListener {
 
     ArrayList<String> allBusNos;
+    ArrayAdapter<String> adapter;
 
     @InjectView(R.id.cool_listView) ListView listView;
 
     @OnItemClick(R.id.cool_listView) void onItemClick(int position) {
 
-        Intent intent = new Intent(this, SearchResultsActivity.class);
-        intent.putExtra("service_id", allBusNos.get(position));
+        Intent intent = new Intent(this, TerminalsActivity.class);
+        intent.putExtra("service_id", adapter.getItem(position));
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setExitTransition(new Fade());
@@ -53,15 +53,16 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         // dependency injection
         ButterKnife.inject(this);
 
-        MyCoolDatabase myCoolDatabase = new MyCoolDatabase(this);
-        allBusNos = myCoolDatabase.getAllBusServices();
+        CoolDatabase coolDatabase = new CoolDatabase(this);
+        allBusNos = coolDatabase.getAllBusServices();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                R.layout.bus_service_item, allBusNos);
+        adapter = new ArrayAdapter<>(this,
+                R.layout.listviewitem_service, allBusNos);
         listView.setAdapter(adapter);
         listView.setTextFilterEnabled(true);
 
     }
+
 
 
     @Override
@@ -77,7 +78,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
             searchView.setQueryHint("Search Bus");
             searchView.setOnQueryTextListener(this);
 
-            ComponentName cn = new ComponentName(this, SearchResultsActivity.class);
+            ComponentName cn = new ComponentName(this, TerminalsActivity.class);
             searchView.setSearchableInfo(searchManager.getSearchableInfo(cn));
             searchView.setIconifiedByDefault(false);
         }
@@ -121,7 +122,6 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
      */
     @Override
     public boolean onQueryTextChange(String newText) {
-        Log.d("ts", "here");
         if (TextUtils.isEmpty(newText))
             listView.clearTextFilter();
         else

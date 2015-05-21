@@ -26,12 +26,12 @@ import java.util.ArrayList;
  * - A databases folder inside assets
  * - A SQLite database inside the databases folder whose file name matches the database name
  */
-public class MyCoolDatabase extends SQLiteAssetHelper {
+public class CoolDatabase extends SQLiteAssetHelper {
 
     private static final String DATABASE_NAME = "travel.sqlite";
     private static final int DATABASE_VERSION = 1;
 
-    public MyCoolDatabase(Context context) {
+    public CoolDatabase(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
