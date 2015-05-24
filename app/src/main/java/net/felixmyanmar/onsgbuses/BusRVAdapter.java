@@ -1,25 +1,83 @@
 package net.felixmyanmar.onsgbuses;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 
-public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder>{
+public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> implements Filterable {
 
     ArrayList<BusStops> mDataset;
+    List<BusStops> orig;
+    Context mContext;
 
-    public BusRVAdapter(ArrayList<BusStops> myDataset) {
+
+    private void setIntegerArrayPref(Context context, String key, ArrayList<Integer> values) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = prefs.edit();
+        JSONArray a = new JSONArray();
+        for (int i = 0; i < values.size(); i++) {
+            a.put(values.get(i));
+        }
+        if (!values.isEmpty()) {
+            editor.putString(key, a.toString());
+        } else {
+            editor.putString(key, null);
+        }
+        editor.apply();
+    }
+
+    private ArrayList<Integer> getIntegerArrayPref(Context context, String key) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        String json = prefs.getString(key, null);
+        ArrayList<Integer> urls = new ArrayList<>();
+        if (json != null) {
+            try {
+                JSONArray a = new JSONArray(json);
+                for (int i = 0; i < a.length(); i++) {
+                    Integer url = a.getInt(i);
+                    urls.add(url);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return urls;
+    }
+
+
+    private void clearPref(Context context, String key) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.remove(key);
+        editor.apply();
+    }
+
+
+    public BusRVAdapter(Context context, ArrayList<BusStops> myDataset) {
+        this.mContext = context;
         this.mDataset = myDataset;
+
+        clearPref(context, "selectedIds");
     }
 
     /**
@@ -65,10 +123,47 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder>{
      *                 item at the given position in the data set.
      * @param position The position of the item within the adapter's data set.
      */
+    ArrayList<Integer> selectedIds;
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(final ViewHolder holder, final int position) {
+
         String BusName = mDataset.get(position).getBusStopName();
-        holder.txtView.setText(BusName);
+        final int BusStop = mDataset.get(position).getBusStopNo();
+
+        holder.txtViewName.setText(BusName);
+        holder.txtViewStop.setText(BusStop + "");
+
+        // Sett all alarms to false first.. then get those in selectIds from SharePreference,
+        // and enable it.
+        selectedIds = new ArrayList<>();
+        selectedIds = getIntegerArrayPref(mContext,"selectedIds");
+        if (selectedIds != null) {
+            for (int i=0; i<selectedIds.size(); i++) {
+                holder.toggleButton.setChecked(false);
+            }
+
+            for (int i=0; i<selectedIds.size(); i++) {
+                if (selectedIds.get(i) == BusStop) holder.toggleButton.setChecked(true);
+            }
+        }
+
+        holder.toggleButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
+                else selectedIds.remove(Integer.valueOf(BusStop));
+                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
+            }
+        });
+        holder.cardView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                holder.toggleButton.toggle();
+                if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
+                else selectedIds.remove(Integer.valueOf(BusStop));
+                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
+            }
+        });
     }
 
     /**
@@ -81,9 +176,44 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder>{
         return mDataset.size();
     }
 
+    @Override
+    public Filter getFilter() {
+        return new busNoFilter();
+    }
+
+    class busNoFilter extends Filter {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+            FilterResults onReturn = new FilterResults();
+            List<BusStops> results = new ArrayList<>();
+            if (orig == null) orig = mDataset;
+            if (charSequence != null) {
+                if (orig != null && orig.size() > 0) {
+                    for (BusStops g : orig) {
+                        String data = g.getBusStopNo() + " " + g.getBusStopName().toLowerCase();
+                        if (data.contains(charSequence.toString().toLowerCase()))
+                            results.add(g);
+                    }
+                }
+                onReturn.values = results;
+            }
+            return onReturn;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            mDataset = (ArrayList<BusStops>) filterResults.values;
+            notifyDataSetChanged();
+        }
+    }
+
+
     public class ViewHolder extends RecyclerView.ViewHolder {
         // each data item is just a string in this case
-        @InjectView(R.id.textview) TextView txtView;
+        @InjectView(R.id.imageView) ImageView imageView;
+        @InjectView(R.id.textViewName) TextView txtViewName;
+        @InjectView(R.id.textViewStop) TextView txtViewStop;
         @InjectView(R.id.toggleButton) ToggleButton toggleButton;
         @InjectView(R.id.cv) CardView cardView;
 
@@ -92,4 +222,6 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder>{
             ButterKnife.inject(this, view);
         }
     }
+
+
 }

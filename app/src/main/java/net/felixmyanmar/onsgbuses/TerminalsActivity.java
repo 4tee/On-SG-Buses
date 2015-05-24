@@ -35,8 +35,6 @@ public class TerminalsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_terminals);
         ButterKnife.inject(this);
 
-
-
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
