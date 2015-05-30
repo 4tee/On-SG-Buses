@@ -31,7 +31,7 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
     Context mContext;
 
 
-    private void setIntegerArrayPref(Context context, String key, ArrayList<Integer> values) {
+    private static void setIntegerArrayPref(Context context, String key, ArrayList<Integer> values) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor editor = prefs.edit();
         JSONArray a = new JSONArray();
@@ -46,7 +46,7 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
         editor.apply();
     }
 
-    private ArrayList<Integer> getIntegerArrayPref(Context context, String key) {
+    public static ArrayList<Integer> getIntegerArrayPref(Context context, String key) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String json = prefs.getString(key, null);
         ArrayList<Integer> urls = new ArrayList<>();
@@ -147,14 +147,14 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
             }
         }
 
-        holder.toggleButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
-                else selectedIds.remove(Integer.valueOf(BusStop));
-                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
-            }
-        });
+//        holder.toggleButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
+//                else selectedIds.remove(Integer.valueOf(BusStop));
+//                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
+//            }
+//        });
         holder.cardView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

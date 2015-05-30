@@ -52,7 +52,7 @@ public class TerminalsRVAdapter extends RecyclerView.Adapter<TerminalsRVAdapter.
                 Context context = view.getContext();
                 Intent intent = new Intent(context, OnTheRoadActivity.class);
                 intent.putExtra("service_id", busService);
-                intent.putExtra("position",position+1);
+                intent.putExtra("direction",position+1);
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     ((Activity)context).getWindow().setExitTransition(new Fade());
