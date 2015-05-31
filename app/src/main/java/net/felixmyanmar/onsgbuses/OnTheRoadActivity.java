@@ -1,7 +1,10 @@
 package net.felixmyanmar.onsgbuses;
 
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
@@ -45,6 +48,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
     ArrayList<BusStops> busStops;
     BusRVAdapter mAdapter;
+    MyBroadcastReceiver receiver;
 
     @InjectView(R.id.cool_recycler_view)
     RecyclerView recyclerView;
@@ -116,6 +120,11 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
         // Kick off the request to build GoogleApiClient.
         buildGoogleApiClient();
+
+        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        receiver = new MyBroadcastReceiver();
+        registerReceiver(receiver, filter);
     }
 
     /**
@@ -180,6 +189,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     protected void onStop() {
         super.onStop();
         mGoogleApiClient.disconnect();
+        this.unregisterReceiver(receiver);
     }
 
     protected static final String TAG = "on-the-road";
@@ -433,5 +443,17 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when calling
         // addGeofences() and removeGeofences().
         return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+
+    public class MyBroadcastReceiver extends BroadcastReceiver {
+        public static final String RESPONSE = "net.felixmyanmar.onsgbuses.intent.action.RESPONSE";
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String geofenceTransitionDetails = intent.getStringExtra("Details");
+            Toast.makeText(context, "broadcast receiver: " + geofenceTransitionDetails, Toast.LENGTH_SHORT)
+                    .show();
+        }
     }
 }
