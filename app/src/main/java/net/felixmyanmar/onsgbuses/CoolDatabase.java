@@ -121,6 +121,7 @@ public class CoolDatabase extends SQLiteAssetHelper {
                 aBusStop.setBusStopName(cursor.getString(2));
                 aBusStop.setLatitude(cursor.getFloat(3));
                 aBusStop.setLongitude(cursor.getFloat(4));
+                aBusStop.setLed_status(0);
 
                 bus_stops.add(aBusStop);
             } while (cursor.moveToNext());

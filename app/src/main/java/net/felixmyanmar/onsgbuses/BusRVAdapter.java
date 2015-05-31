@@ -2,6 +2,7 @@ package net.felixmyanmar.onsgbuses;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.AnimationDrawable;
 import android.preference.PreferenceManager;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
@@ -129,9 +130,23 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
 
         String BusName = mDataset.get(position).getBusStopName();
         final int BusStop = mDataset.get(position).getBusStopNo();
+        int status = mDataset.get(position).getLed_status();
 
         holder.txtViewName.setText(BusName);
         holder.txtViewStop.setText(BusStop + "");
+
+        switch (status) {
+            case 1:
+                holder.imageView.setImageResource(R.drawable.blinking_green);
+                AnimationDrawable frameAnimation = (AnimationDrawable) holder.imageView.getDrawable();
+                frameAnimation.start();
+                break;
+            case 2:
+                holder.imageView.setImageResource(R.drawable.circle_red);
+                break;
+
+            default: holder.imageView.setImageResource(R.drawable.circle_grey);
+        }
 
         // Sett all alarms to false first.. then get those in selectIds from SharePreference,
         // and enable it.

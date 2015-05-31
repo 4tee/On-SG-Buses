@@ -7,6 +7,7 @@ public class BusStops {
     private String busStopName;
     private float latitude;
     private float longitude;
+    private int led_status; // 0 - default/passed stops; 1 - current stop; 2 - upcoming stops
 
     public String getBusStopName() {
         return busStopName;
@@ -48,6 +49,15 @@ public class BusStops {
         this.sequence = sequence;
     }
 
+    public int getLed_status() {
+        return led_status;
+    }
+
+    public void setLed_status(int led_status) {
+        this.led_status = led_status;
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (o==null) return false;
@@ -61,4 +71,6 @@ public class BusStops {
     public int hashCode() {
         return busStopNo;
     }
+
+
 }

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Point;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -15,6 +16,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.View;
@@ -38,6 +40,7 @@ import net.felixmyanmar.onsgbuses.geofencing.GeofenceIntentService;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.StringTokenizer;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
@@ -49,6 +52,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     ArrayList<BusStops> busStops;
     BusRVAdapter mAdapter;
     MyBroadcastReceiver receiver;
+    RecyclerView.LayoutManager mLayoutManager;
 
     @InjectView(R.id.cool_recycler_view)
     RecyclerView recyclerView;
@@ -65,7 +69,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
 
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
+        mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
 
@@ -272,7 +276,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         for (int index = 0; index < busStops.size(); index++) {
             BusStops aStop = busStops.get(index);
             mGeofenceList.add(new Geofence.Builder()
-                    .setRequestId(aStop.getBusStopName())
+                    .setRequestId(aStop.getBusStopNo()+":"+aStop.getBusStopName())
                     .setCircularRegion(
                             aStop.getLatitude(),
                             aStop.getLongitude(),
@@ -446,14 +450,55 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     }
 
 
+
+
     public class MyBroadcastReceiver extends BroadcastReceiver {
         public static final String RESPONSE = "net.felixmyanmar.onsgbuses.intent.action.RESPONSE";
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            String geofenceTransitionDetails = intent.getStringExtra("Details");
-            Toast.makeText(context, "broadcast receiver: " + geofenceTransitionDetails, Toast.LENGTH_SHORT)
-                    .show();
+            StringTokenizer stk = new StringTokenizer(intent.getStringExtra("Details"), ":");
+            String action = "", busStop = "", busStopName = "";
+
+            if (stk.hasMoreTokens()) action = stk.nextToken().trim();
+            if (stk.hasMoreTokens()) busStop = stk.nextToken().trim();
+            if (stk.hasMoreTokens()) busStopName = stk.nextToken().trim();
+
+            int found = -1;
+            for (int i=0; i<busStops.size(); i++) {
+                busStops.get(i).setLed_status(0);
+                if (busStop.equals(busStops.get(i).getBusStopNo()+"")) {
+                    found = i;
+                    break;
+                }
+            }
+
+            Toast.makeText(context, "found: " + found, Toast.LENGTH_SHORT).show();
+
+            if (found != -1) {
+                busStops.get(found).setLed_status(1);
+
+                if (found != busStops.size() - 1) {
+                    for (int i = found + 1; i < busStops.size(); i++)
+                        busStops.get(i).setLed_status(2);
+                }
+
+                //recyclerView.scrollToPosition(found+2);
+                Display display = getWindowManager().getDefaultDisplay();
+                int some_space;
+                if (Build.VERSION.SDK_INT >= 13) {
+                    Point point = new Point();
+                    display.getSize(point);
+                    some_space = point.y / 3;
+                } else {
+                    // deprecated, but it is for before API 13.
+                    some_space = display.getHeight()/3;
+                }
+
+                ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
+                mAdapter.notifyDataSetChanged();
+            }
+
         }
     }
 }
