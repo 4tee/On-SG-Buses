@@ -137,12 +137,12 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
 
         switch (status) {
             case 1:
-                holder.imageView.setImageResource(R.drawable.blinking_green);
+                holder.imageView.setImageResource(R.drawable.blinking_red);
                 AnimationDrawable frameAnimation = (AnimationDrawable) holder.imageView.getDrawable();
                 frameAnimation.start();
                 break;
             case 2:
-                holder.imageView.setImageResource(R.drawable.circle_red);
+                holder.imageView.setImageResource(R.drawable.circle_green);
                 break;
 
             default: holder.imageView.setImageResource(R.drawable.circle_grey);

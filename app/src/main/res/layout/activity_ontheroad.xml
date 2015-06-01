@@ -3,10 +3,28 @@
     android:layout_width="match_parent" android:layout_height="match_parent">
 
     <Button
+        android:id="@+id/start_updates_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:onClick="startUpdatesButtonHandler"
+        android:text="@string/start_updates" />
+
+    <Button
+        android:id="@+id/stop_updates_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:enabled="false"
+        android:onClick="stopUpdatesButtonHandler"
+        android:text="@string/stop_updates" />
+
+    <Button
         android:id="@+id/add_geofences_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
+        android:layout_below="@id/start_updates_button"
         android:onClick="addGeofencesButtonHandler"
         android:text="@string/add_geofences" />
 
@@ -15,6 +33,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
+        android:layout_below="@id/start_updates_button"
         android:onClick="removeGeofencesButtonHandler"
         android:text="@string/remove_geofences" />
 
@@ -24,5 +43,50 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="vertical" />
+
+    <TextView
+        android:id="@+id/latitude_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/add_geofences_button"
+        android:text="@string/latitude_label" />
+
+    <TextView
+        android:id="@+id/latitude_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/latitude_label"
+        android:layout_toRightOf="@+id/latitude_label" />
+
+    <TextView
+        android:id="@+id/longitude_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/latitude_label"
+        android:text="@string/longitude_label" />
+
+    <TextView
+        android:id="@+id/longitude_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/longitude_label"
+        android:layout_toRightOf="@+id/longitude_label" />
+
+    <TextView
+        android:id="@+id/last_update_time_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/longitude_label"
+        android:text="@string/last_update_time_label" />
+
+    <TextView
+        android:id="@+id/last_update_time_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/last_update_time_label"
+        android:layout_toRightOf="@+id/last_update_time_label"/>
 
 </RelativeLayout>
