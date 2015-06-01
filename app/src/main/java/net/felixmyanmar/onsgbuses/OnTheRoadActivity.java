@@ -80,6 +80,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         String service_no = touchIntent.getStringExtra("service_id");
         int direction = touchIntent.getIntExtra("direction", 1);
 
+        setTitle(service_no);
 
         // Retrieve an instance of the SharedPreferences object.
         mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
