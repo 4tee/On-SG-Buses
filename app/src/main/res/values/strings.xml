@@ -4,6 +4,7 @@
     <string name="Settings">Settings</string>
     <string name="search_bus">Search Bus</string>
     <string name="zero_result">No result</string>
+    <string name="sg_buses">SG Buses</string>
 
     <!-- Buttons strings -->
     <string name="add_geofences">Add geofences</string>

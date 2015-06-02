@@ -66,19 +66,13 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
     }
 
 
-    private void clearPref(Context context, String key) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.remove(key);
-        editor.apply();
-    }
+
 
 
     public BusRVAdapter(Context context, ArrayList<BusStops> myDataset) {
         this.mContext = context;
         this.mDataset = myDataset;
 
-        clearPref(context, "selectedIds");
     }
 
     /**

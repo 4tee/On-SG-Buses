@@ -40,6 +40,7 @@ import com.google.android.gms.location.LocationServices;
 import net.felixmyanmar.onsgbuses.geofencing.Constants;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceErrorMessages;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceIntentService;
+import net.felixmyanmar.onsgbuses.geofencing.Midpoint;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -66,8 +67,11 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     @InjectView(R.id.add_geofences_button) Button mAddGeofencesButton;
     @InjectView(R.id.remove_geofences_button) Button mRemoveGeofencesButton;
 
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG,"onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
@@ -195,17 +199,21 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
 
     @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        mGoogleApiClient.connect();
-    }
-
-
-    @Override
     protected void onStop() {
         super.onStop();
-        mGoogleApiClient.disconnect();
-        this.unregisterReceiver(receiver);
+        if (mGoogleApiClient!=null) mGoogleApiClient.disconnect();
+        try {
+            this.unregisterReceiver(receiver);
+        } catch (IllegalArgumentException iae) {
+            //Nothing
+        }
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        Log.d(TAG, "onPostResume");
+        mGoogleApiClient.connect();
     }
 
     protected static final String TAG = "on-the-road";
@@ -239,7 +247,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
     @Override
     public void onConnected(Bundle bundle) {
-        Toast.makeText(this, TAG + ": Connected to GoogleApiClient", Toast.LENGTH_SHORT).show();
         // If the initial location was never previously requested, we use
         // FusedLocationApi.getLastLocation() to get it. If it was previously requested, we store
         // its value in the Bundle and check for it in onCreate(). We
@@ -281,6 +288,49 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     }
 
 
+    /**
+     * This uses the 'haversine' formula to calculate the half-way point along a great path between
+     * two points.
+     * http://www.movable-type.co.uk/scripts/latlong.html
+     *
+     * @param lat1 latitude of point 1 in double
+     * @param lon1 longitude of point 1 in double
+     * @param lat2 latitude of point 2 in double
+     * @param lon2 longitude of point 2 in double
+     * @return Location object of midpoint
+     */
+    private Location getMidPoint(double lat1, double lon1, double lat2, double lon2) {
+
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        //convert to radians
+        lat1 = Math.toRadians(lat1);
+        lat2 = Math.toRadians(lat2);
+        lon1 = Math.toRadians(lon1);
+
+        double Bx = Math.cos(lat2) * Math.cos(dLon);
+        double By = Math.cos(lat2) * Math.sin(dLon);
+        double lat3 = Math.atan2(Math.sin(lat1) + Math.sin(lat2), Math.sqrt((Math.cos(lat1) + Bx) * (Math.cos(lat1) + Bx) + By * By));
+        double lon3 = lon1 + Math.atan2(By, Math.cos(lat1) + Bx);
+
+        return createLocation(Math.toDegrees(lat3), Math.toDegrees(lon3));
+    }
+
+    /**
+     * Using latitude and longtiude, you can create Location object in Java.
+     * Provider name is unnecessary though.
+     *
+     * @param lat latitude of point
+     * @param lon longitude of point
+     * @return Location object
+     */
+    private Location createLocation(double lat, double lon) {
+        Location aLocation = new Location(""); //provider name is unnecessary
+        aLocation.setLatitude(lat);
+        aLocation.setLongitude(lon);
+
+        return aLocation;
+    }
 
     /**
      * This sample hard codes geofence data. A real app might dynamically create geofences based on
@@ -288,20 +338,64 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      */
     public void populateGeofenceList() {
 
-        for (int index = 0; index < busStops.size(); index++) {
-            BusStops aStop = busStops.get(index);
+
+
+        ArrayList<Midpoint> midpoints = new ArrayList<>();
+        for (int index=0; index< busStops.size()-1; index++) {
+
+            double Point1Lat = busStops.get(index).getLatitude();
+            double Point1Lon = busStops.get(index).getLongitude();
+            double Point2Lat = busStops.get(index+1).getLatitude();
+            double Point2Lon = busStops.get(index+1).getLongitude();
+
+            Location Point1 = createLocation(Point1Lat, Point1Lon);
+            Location Point2 = createLocation(Point2Lat, Point2Lon);
+
+            Location midLocation = getMidPoint(Point1Lat, Point1Lon, Point2Lat, Point2Lon);
+            float geofenceRadius = Point1.distanceTo(Point2) / 2;
+            Midpoint aMidPoint = new Midpoint();
+            aMidPoint.setMidGeoPoint(midLocation);
+            aMidPoint.setDistanceInMeter(geofenceRadius);
+            aMidPoint.setBusStopNo(busStops.get(index+1).getBusStopNo());
+            aMidPoint.setBusStopName(busStops.get(index+1).getBusStopName());
+            midpoints.add(aMidPoint);
+        }
+
+
+        for (int index = 0; index < midpoints.size(); index++) {
+            Midpoint aMidPoint = midpoints.get(index);
+            Log.d(TAG, index+" "
+                    +aMidPoint.getDistanceInMeter()+" "
+                    + aMidPoint.getMidGeoPoint().getLatitude() + " "
+                    + aMidPoint.getMidGeoPoint().getLongitude() + " "
+                    + aMidPoint.getBusStopName());
+
             mGeofenceList.add(new Geofence.Builder()
-                    .setRequestId(aStop.getBusStopNo()+":"+aStop.getBusStopName())
+                    .setRequestId(aMidPoint.getBusStopNo() + ":" + aMidPoint.getBusStopName())
                     .setCircularRegion(
-                            aStop.getLatitude(),
-                            aStop.getLongitude(),
-                            Constants.GEOFENCE_RADIUS_IN_METERS
+                            aMidPoint.getMidGeoPoint().getLatitude(),
+                            aMidPoint.getMidGeoPoint().getLongitude(),
+                            aMidPoint.getDistanceInMeter()
                     )
                     .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                            Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
                     .build());
         }
+
+//        for (int index = 0; index < busStops.size(); index++) {
+//            BusStops aStop = busStops.get(index);
+//            mGeofenceList.add(new Geofence.Builder()
+//                    .setRequestId(aStop.getBusStopNo()+":"+aStop.getBusStopName())
+//                    .setCircularRegion(
+//                            aStop.getLatitude(),
+//                            aStop.getLongitude(),
+//                            Constants.GEOFENCE_RADIUS_IN_METERS
+//                    )
+//                    .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
+//                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+//                            Geofence.GEOFENCE_TRANSITION_EXIT)
+//                    .build());
+//        }
     }
 
     /**
@@ -534,7 +628,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 30000;
+    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 3000;
 
     /**
      * The fastest rate for active location updates. Exact. Updates will never be more frequent
@@ -597,7 +691,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         // application will never receive updates faster than this value.
         mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
 
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
     /**

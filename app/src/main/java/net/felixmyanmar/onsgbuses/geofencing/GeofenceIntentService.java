@@ -5,8 +5,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.TextUtils;
@@ -19,8 +21,12 @@ import net.felixmyanmar.onsgbuses.MainActivity;
 import net.felixmyanmar.onsgbuses.OnTheRoadActivity;
 import net.felixmyanmar.onsgbuses.R;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringTokenizer;
 
 /**
  * Listener for geofence transition changes.
@@ -42,6 +48,33 @@ public class GeofenceIntentService extends IntentService {
         super(TAG);
     }
 
+
+    /**
+     * Get bus stops that were set to trigger the alarm.
+     *
+     * @param context sent by Location Services
+     * @param key key to hold sharedpreference
+     * @return an array of all bus stops to trigger alarm.
+     */
+    public static ArrayList<Integer> getIntegerArrayPref(Context context, String key) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        String json = prefs.getString(key, null);
+        ArrayList<Integer> urls = new ArrayList<>();
+        if (json != null) {
+            try {
+                JSONArray a = new JSONArray(json);
+                for (int i = 0; i < a.length(); i++) {
+                    Integer url = a.getInt(i);
+                    urls.add(url);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return urls;
+    }
+
+
     /**
      * Handles incoming intents.
      * @param intent sent by Location Services. This Intent is provided to Location
@@ -59,6 +92,7 @@ public class GeofenceIntentService extends IntentService {
 
         // Get the transition type.
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
+        ArrayList<Integer> selectedIds;
 
         // Test that the reported transition was of interest.
         // || geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT
@@ -75,7 +109,22 @@ public class GeofenceIntentService extends IntentService {
             );
 
             // Send notification and log the transition details.
+            StringTokenizer stk = new StringTokenizer(geofenceTransitionDetails, ":");
+            String action = "", busStop = "", busStopName = "";
+
+            if (stk.hasMoreTokens()) action = stk.nextToken().trim();
+            if (stk.hasMoreTokens()) busStop = stk.nextToken().trim();
+            if (stk.hasMoreTokens()) busStopName = stk.nextToken().trim();
+
+            selectedIds = getIntegerArrayPref(this,"selectedIds");
+            for (int i=0; i<selectedIds.size(); i++) {
+                if (busStop.equals(selectedIds.get(i)+"")) {
+                    sendNotification(geofenceTransitionDetails);
+                    break;
+                }
+            }
             //sendNotification(geofenceTransitionDetails);
+            Log.i(TAG, "selectedID size:" + selectedIds.size());
             Log.i(TAG, geofenceTransitionDetails);
 
             // Broadcast receiver to send back the info to Activity
