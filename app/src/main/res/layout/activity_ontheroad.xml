@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <Button
         android:id="@+id/start_updates_button"
@@ -39,9 +40,9 @@
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/cool_recycler_view"
-        android:layout_below="@id/add_geofences_button"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@id/add_geofences_button"
         android:scrollbars="vertical" />
 
     <TextView
@@ -50,14 +51,16 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/add_geofences_button"
-        android:text="@string/latitude_label" />
+        android:text="@string/latitude_label"
+        android:textColor="@color/red" />
 
     <TextView
         android:id="@+id/latitude_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBaseline="@+id/latitude_label"
-        android:layout_toRightOf="@+id/latitude_label" />
+        android:layout_toRightOf="@+id/latitude_label"
+        android:textColor="@color/red" />
 
     <TextView
         android:id="@+id/longitude_label"
@@ -65,14 +68,16 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/latitude_label"
-        android:text="@string/longitude_label" />
+        android:text="@string/longitude_label"
+        android:textColor="@color/red" />
 
     <TextView
         android:id="@+id/longitude_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBaseline="@+id/longitude_label"
-        android:layout_toRightOf="@+id/longitude_label" />
+        android:layout_toRightOf="@+id/longitude_label"
+        android:textColor="@color/red" />
 
     <TextView
         android:id="@+id/last_update_time_label"
@@ -80,13 +85,23 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/longitude_label"
-        android:text="@string/last_update_time_label" />
+        android:text="@string/last_update_time_label"
+        android:textColor="@color/red" />
 
     <TextView
         android:id="@+id/last_update_time_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBaseline="@+id/last_update_time_label"
-        android:layout_toRightOf="@+id/last_update_time_label"/>
+        android:layout_toRightOf="@+id/last_update_time_label"
+        android:textColor="@color/red" />
+
+    <TextView
+        android:id="@+id/geolist_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/last_update_time_label"
+        android:textColor="@color/red" />
 
 </RelativeLayout>

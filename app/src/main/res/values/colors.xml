@@ -15,4 +15,5 @@
 -->
 <resources>
     <color name="cardview_text_color">#ff464443</color>
+    <color name="red">#ffff0207</color>
 </resources>

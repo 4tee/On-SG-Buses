@@ -125,10 +125,8 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         // Initially set the PendingIntent used in addGeofences() and removeGeofences() to null.
         mGeofencePendingIntent = null;
 
-
-
         // Get the geofences used. Geofence data is hard coded in this sample.
-        populateGeofenceList();
+        populateGeofenceList(0);
 
         // Kick off the request to build GoogleApiClient.
         buildGoogleApiClient();
@@ -336,12 +334,11 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      * This sample hard codes geofence data. A real app might dynamically create geofences based on
      * the user's location.
      */
-    public void populateGeofenceList() {
+    public void populateGeofenceList(int start) {
 
-
-
+        /* Compute midpoints for all the bus stops */
         ArrayList<Midpoint> midpoints = new ArrayList<>();
-        for (int index=0; index< busStops.size()-1; index++) {
+        for (int index=start; index< busStops.size()-1; index++) {
 
             double Point1Lat = busStops.get(index).getLatitude();
             double Point1Lon = busStops.get(index).getLongitude();
@@ -563,6 +560,10 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
 
 
+    int last_found = -1;
+
+    // isLockedDir will be true when diference between found and last_found is 1
+    boolean isLockedDir = false;
 
     /**
      * Broadcast receiver allows for the activity to listen for the broadcast from service
@@ -574,31 +575,60 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            StringTokenizer stk = new StringTokenizer(intent.getStringExtra("Details"), ":");
-            String action = "", busStop = "", busStopName = "";
-
-            if (stk.hasMoreTokens()) action = stk.nextToken().trim();
-            if (stk.hasMoreTokens()) busStop = stk.nextToken().trim();
-            if (stk.hasMoreTokens()) busStopName = stk.nextToken().trim();
+            mGeoListTextView.setText(intent.getStringExtra("Details"));
+            Log.d(TAG, "broadcasted: " + intent.getStringExtra("Details"));
 
             int found = -1;
-            for (int i=0; i<busStops.size(); i++) {
-                busStops.get(i).setLed_status(0);
-                if (busStop.equals(busStops.get(i).getBusStopNo()+"")) {
-                    found = i;
-                    break;
-                }
+
+            // Get all possible locations sent by the broadcaster
+            StringTokenizer all = new StringTokenizer(intent.getStringExtra("Details"), ",");
+            ArrayList<String> results = new ArrayList<>();
+            while (all.hasMoreTokens()) {
+                results.add(all.nextToken().trim());
             }
 
-            if (found != -1) {
-                busStops.get(found).setLed_status(1);
+            for (int index = 0; index < results.size(); index++) {
+                String busDetails = results.get(index);
 
-                if (found != busStops.size() - 1) {
-                    for (int i = found + 1; i < busStops.size(); i++)
-                        busStops.get(i).setLed_status(2);
+                StringTokenizer stk = new StringTokenizer(busDetails, ":");
+                String busStop = "", busStopName = "";
+
+                ArrayList<String> tokens = new ArrayList<>();
+                while (stk.hasMoreTokens()) {
+                    tokens.add(stk.nextToken().trim());
                 }
 
-                //recyclerView.scrollToPosition(found+2);
+                // Sometimes, you can get two locations like
+                // Entered: 42149:Aft King Albert Pk, 42071:Shell Kiosk
+                if (tokens.size()>2) {
+                    busStop = tokens.get(1);
+                    busStopName = tokens.get(2);
+                } else {
+                    busStop = tokens.get(0);
+                    busStopName = tokens.get(1);
+                }
+
+                // find the bus Stop based on bustStop from stringtokenizer
+                Log.d(TAG,index + " look for busStop: " + busStop + " " +busStopName);
+                for (int i = 0; i < busStops.size(); i++) {
+                    if (busStop.equals(busStops.get(i).getBusStopNo() + "")) {
+                        Log.d(TAG,"found at " + i);
+                        found = i;
+                        break;
+                    }
+                }
+
+                if (found>last_found) break;
+                else Log.d(TAG, "found:" + found + " VS last_found:" + last_found);
+            }
+
+
+            // reset all the LEDs
+            for (int i = 0; i < busStops.size(); i++) busStops.get(i).setLed_status(0);
+
+            if (found != -1 && found > last_found ) {
+
+                // Move the listview to the center
                 Display display = getWindowManager().getDefaultDisplay();
                 int some_space;
                 if (Build.VERSION.SDK_INT >= 13) {
@@ -607,12 +637,48 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
                     some_space = point.y / 3;
                 } else {
                     // deprecated, but it is for before API 13.
-                    some_space = display.getHeight()/3;
+                    some_space = display.getHeight() / 3;
                 }
 
-                ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
-                mAdapter.notifyDataSetChanged();
+                if (!isLockedDir) {
+                    Log.d(TAG, "before Locking - found:" + found + " VS last_found:" + last_found);
+
+                    // Do action
+                    busStops.get(found).setLed_status(1);
+
+                    if (found != busStops.size() - 1) {
+                        for (int i = found + 1; i < busStops.size(); i++)
+                            busStops.get(i).setLed_status(2);
+                    }
+
+                    // Lock the direction to true so that, it won't skip the stop a lot.
+                    isLockedDir = (found - last_found == 1);
+
+                    last_found = found;
+                    ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
+                    mAdapter.notifyDataSetChanged();
+                } else {
+                    Log.d(TAG, "after Locking - found:" + found + " VS last_found:" + last_found);
+                    // Once the direction is locked, the next bus stop index cannot exceed more than 1
+                    if (found-last_found==1) {
+                        Log.d(TAG, "after Locking - go");
+                        busStops.get(found).setLed_status(1);
+                        if (found != busStops.size() - 1) {
+                            for (int i = found + 1; i < busStops.size(); i++)
+                                busStops.get(i).setLed_status(2);
+                        }
+                        last_found = found;
+                        ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
+                        mAdapter.notifyDataSetChanged();
+
+                    } else {
+                        Log.d(TAG, "after Locking - NO go");
+                    /*invalid jump*/ }
+                }
+
+                Log.d(TAG, "go: " +last_found);
             }
+            else Log.d(TAG, "Skip it because found:" + found + " < lastfound:" +last_found + " " + isLockedDir);
         }
     }
 
@@ -662,6 +728,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     @InjectView(R.id.latitude_text) TextView mLatitudeTextView;
     @InjectView(R.id.longitude_text) TextView mLongitudeTextView;
     @InjectView(R.id.last_update_time_text) TextView mLastUpdateTimeTextView;
+    @InjectView(R.id.geolist_text) TextView mGeoListTextView;
     @InjectView(R.id.start_updates_button) Button mStartUpdatesButton;
     @InjectView(R.id.stop_updates_button) Button mStopUpdatesButton;
 
@@ -749,8 +816,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         mCurrentLocation = location;
         mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
         updateUI();
-        Toast.makeText(this, getResources().getString(R.string.location_updated_message),
-                Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -815,7 +880,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      * @param savedInstanceState The activity state saved in the Bundle.
      */
     private void updateValuesFromBundle(Bundle savedInstanceState) {
-        Log.i(TAG, "Updating values from bundle");
         if (savedInstanceState != null) {
             // Update the value of mRequestingLocationUpdates from the Bundle, and make sure that
             // the Start Updates and Stop Updates buttons are correctly enabled or disabled.
