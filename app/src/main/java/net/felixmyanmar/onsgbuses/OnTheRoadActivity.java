@@ -10,12 +10,14 @@ import android.graphics.Point;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.text.TextUtils;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
@@ -24,6 +26,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -44,6 +47,7 @@ import net.felixmyanmar.onsgbuses.geofencing.Midpoint;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -51,6 +55,7 @@ import java.util.StringTokenizer;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import butterknife.OnClick;
 
 
 public class OnTheRoadActivity extends AppCompatActivity implements SearchView.OnQueryTextListener,
@@ -71,10 +76,11 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG,"onCreate");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
+        Log.d(TAG, "onCreate invoked");
 
         mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
@@ -84,7 +90,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         String service_no = touchIntent.getStringExtra("service_id");
         int direction = touchIntent.getIntExtra("direction", 1);
 
-        setTitle(service_no);
 
         // Retrieve an instance of the SharedPreferences object.
         mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
@@ -92,6 +97,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
         // Get the value of mGeofencesAdded from SharedPreferences. Set to false as a default.
         mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
+        Log.d(TAG, "mGeofencesAdded:" + mGeofencesAdded);
         setButtonsEnabledState();
 
         if (service_no!=null) {
@@ -127,15 +133,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
         // Get the geofences used. Geofence data is hard coded in this sample.
         populateGeofenceList(0);
-
-        // Kick off the request to build GoogleApiClient.
-        buildGoogleApiClient();
-
-        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
-        filter.addCategory(Intent.CATEGORY_DEFAULT);
-        receiver = new MyBroadcastReceiver();
-        registerReceiver(receiver, filter);
-
 
         // LocationUpdates
         mRequestingLocationUpdates = false;
@@ -207,12 +204,22 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         }
     }
 
-    @Override
-    protected void onPostResume() {
-        super.onPostResume();
-        Log.d(TAG, "onPostResume");
-        mGoogleApiClient.connect();
-    }
+//    @Override
+//    protected void onPostResume() {
+//        super.onPostResume();
+//        mGoogleApiClient.connect();
+//
+//        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
+//            startLocationUpdates();
+//        }
+//
+//        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
+//        filter.addCategory(Intent.CATEGORY_DEFAULT);
+//        receiver = new MyBroadcastReceiver();
+//        registerReceiver(receiver, filter);
+//
+//        isLockedDir = false;
+//    }
 
     protected static final String TAG = "on-the-road";
 
@@ -359,16 +366,12 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         }
 
 
+        // set geofences into the intent service
         for (int index = 0; index < midpoints.size(); index++) {
             Midpoint aMidPoint = midpoints.get(index);
-            Log.d(TAG, index+" "
-                    +aMidPoint.getDistanceInMeter()+" "
-                    + aMidPoint.getMidGeoPoint().getLatitude() + " "
-                    + aMidPoint.getMidGeoPoint().getLongitude() + " "
-                    + aMidPoint.getBusStopName());
 
             mGeofenceList.add(new Geofence.Builder()
-                    .setRequestId(aMidPoint.getBusStopNo() + ":" + aMidPoint.getBusStopName())
+                    .setRequestId(index + ":" + aMidPoint.getBusStopNo() + ":" + aMidPoint.getBusStopName())
                     .setCircularRegion(
                             aMidPoint.getMidGeoPoint().getLatitude(),
                             aMidPoint.getMidGeoPoint().getLongitude(),
@@ -379,20 +382,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
                     .build());
         }
 
-//        for (int index = 0; index < busStops.size(); index++) {
-//            BusStops aStop = busStops.get(index);
-//            mGeofenceList.add(new Geofence.Builder()
-//                    .setRequestId(aStop.getBusStopNo()+":"+aStop.getBusStopName())
-//                    .setCircularRegion(
-//                            aStop.getLatitude(),
-//                            aStop.getLongitude(),
-//                            Constants.GEOFENCE_RADIUS_IN_METERS
-//                    )
-//                    .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-//                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-//                            Geofence.GEOFENCE_TRANSITION_EXIT)
-//                    .build());
-//        }
     }
 
     /**
@@ -441,8 +430,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         }
 
         try {
-            Log.d(TAG, "addGeofencesButtonHandler");
-
             LocationServices.GeofencingApi.addGeofences(
                     mGoogleApiClient,
                     // The GeofenceRequest object.
@@ -470,7 +457,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
             return;
         }
         try {
-            Log.d(TAG, "removeGeofencesButtonHandler");
 
             // Remove geofences.
             LocationServices.GeofencingApi.removeGeofences(
@@ -564,6 +550,55 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
     // isLockedDir will be true when diference between found and last_found is 1
     boolean isLockedDir = false;
+    String busStop = "";
+
+
+    /**
+     * Update the recycler view based on found index.
+     * @param found_index an integer to indicate the current stop
+     */
+    private void updateRecyclerView(int found_index) {
+        // Move the listview to the center
+        Display display = getWindowManager().getDefaultDisplay();
+        int some_space;
+        if (Build.VERSION.SDK_INT >= 13) {
+            Point point = new Point();
+            display.getSize(point);
+            some_space = point.y / 3;
+        } else {
+            // deprecated, but it is for before API 13.
+            some_space = display.getHeight() / 3;
+        }
+
+        // reset all the LEDs
+        for (int i = 0; i < busStops.size(); i++) busStops.get(i).setLed_status(0);
+
+        // set current bus stop
+        busStops.get(found_index).setLed_status(1);
+
+        // set pending bus stops
+        if (found_index != busStops.size() - 1) {
+            for (int i = found_index + 1; i < busStops.size(); i++)
+                busStops.get(i).setLed_status(2);
+        }
+
+        mGeoListTextView.append("updateRecyclerView:" + found_index);
+        // update the data adapter
+        ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found_index, some_space);
+        mAdapter.notifyDataSetChanged();
+    }
+
+    private int findIndexOfBusStopsArray(String searchBusStop) {
+        int foundIndex = -1;
+        for (int i = 0; i < busStops.size(); i++) {
+            if (searchBusStop.equals(busStops.get(i).getBusStopNo() + "")) {
+                mGeoListTextView.append("\nfound at " + i);
+                foundIndex = i;
+                break;
+            }
+        }
+        return foundIndex;
+    }
 
     /**
      * Broadcast receiver allows for the activity to listen for the broadcast from service
@@ -575,8 +610,8 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            mGeoListTextView.setText(intent.getStringExtra("Details"));
-            Log.d(TAG, "broadcasted: " + intent.getStringExtra("Details"));
+            Log.d(TAG, "onReceive invoked");
+            mGeoListTextView.append("\n"+intent.getStringExtra("Details") + " isLocked:" + isLockedDir);
 
             int found = -1;
 
@@ -587,39 +622,40 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
                 results.add(all.nextToken().trim());
             }
 
+            Collections.sort(results);
+
             for (int index = 0; index < results.size(); index++) {
                 String busDetails = results.get(index);
 
                 StringTokenizer stk = new StringTokenizer(busDetails, ":");
-                String busStop = "", busStopName = "";
-
                 ArrayList<String> tokens = new ArrayList<>();
                 while (stk.hasMoreTokens()) {
                     tokens.add(stk.nextToken().trim());
                 }
 
+                busStop = tokens.get(1);
+
                 // Sometimes, you can get two locations like
-                // Entered: 42149:Aft King Albert Pk, 42071:Shell Kiosk
-                if (tokens.size()>2) {
-                    busStop = tokens.get(1);
-                    busStopName = tokens.get(2);
-                } else {
-                    busStop = tokens.get(0);
-                    busStopName = tokens.get(1);
-                }
+                // 10:42149:Aft King Albert Pk, 18:42071:Shell Kiosk
+//                if (tokens.size()>2) {
+//                    busStop = tokens.get(1);
+//                } else {
+//                    busStop = tokens.get(0);
+//                }
 
                 // find the bus Stop based on bustStop from stringtokenizer
-                Log.d(TAG,index + " look for busStop: " + busStop + " " +busStopName);
-                for (int i = 0; i < busStops.size(); i++) {
-                    if (busStop.equals(busStops.get(i).getBusStopNo() + "")) {
-                        Log.d(TAG,"found at " + i);
-                        found = i;
-                        break;
-                    }
-                }
+                mGeoListTextView.append("\n" + index + " look for busStop: " + busStop);
+                found = findIndexOfBusStopsArray(busStop);
+//                for (int i = 0; i < busStops.size(); i++) {
+//                    if (busStop.equals(busStops.get(i).getBusStopNo() + "")) {
+//                        mGeoListTextView.append("\nfound at " + i);
+//                        found = i;
+//                        break;
+//                    }
+//                }
 
-                if (found>last_found) break;
-                else Log.d(TAG, "found:" + found + " VS last_found:" + last_found);
+                if (found > last_found) break;
+                else mGeoListTextView.append("\nfound:" + found + " VS last_found:" + last_found);
             }
 
 
@@ -641,7 +677,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
                 }
 
                 if (!isLockedDir) {
-                    Log.d(TAG, "before Locking - found:" + found + " VS last_found:" + last_found);
+                    mGeoListTextView.append("\nbefore Locking - found:" + found + " VS last_found:" + last_found);
 
                     // Do action
                     busStops.get(found).setLed_status(1);
@@ -655,30 +691,36 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
                     isLockedDir = (found - last_found == 1);
 
                     last_found = found;
+
+                    mGeoListTextView.append("\ngo: " + last_found);
                     ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
                     mAdapter.notifyDataSetChanged();
                 } else {
-                    Log.d(TAG, "after Locking - found:" + found + " VS last_found:" + last_found);
+
+                    mGeoListTextView.append("\nafter Locking - found:" + found + " VS last_found:" + last_found);
                     // Once the direction is locked, the next bus stop index cannot exceed more than 1
                     if (found-last_found==1) {
-                        Log.d(TAG, "after Locking - go");
+                        mGeoListTextView.append("\nafter Locking - go");
+
                         busStops.get(found).setLed_status(1);
                         if (found != busStops.size() - 1) {
                             for (int i = found + 1; i < busStops.size(); i++)
                                 busStops.get(i).setLed_status(2);
                         }
                         last_found = found;
+
+                        mGeoListTextView.append("\ngo: " + last_found);
                         ((LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(found, some_space);
                         mAdapter.notifyDataSetChanged();
 
                     } else {
-                        Log.d(TAG, "after Locking - NO go");
+                        mGeoListTextView.append("\nafter Locking - NO go");
                     /*invalid jump*/ }
                 }
-
-                Log.d(TAG, "go: " +last_found);
             }
-            else Log.d(TAG, "Skip it because found:" + found + " < lastfound:" +last_found + " " + isLockedDir);
+            else {
+                mGeoListTextView.append("\nSkip it because found:" + found + " < lastfound:" +last_found + " " + isLockedDir);
+            }
         }
     }
 
@@ -694,7 +736,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 3000;
+    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 5000;
 
     /**
      * The fastest rate for active location updates. Exact. Updates will never be more frequent
@@ -725,12 +767,24 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     protected String mLastUpdateTime;
 
     // UI Widgets.
+    @InjectView(R.id.toggleButton) ToggleButton mToggleButton;
     @InjectView(R.id.latitude_text) TextView mLatitudeTextView;
     @InjectView(R.id.longitude_text) TextView mLongitudeTextView;
     @InjectView(R.id.last_update_time_text) TextView mLastUpdateTimeTextView;
     @InjectView(R.id.geolist_text) TextView mGeoListTextView;
     @InjectView(R.id.start_updates_button) Button mStartUpdatesButton;
     @InjectView(R.id.stop_updates_button) Button mStopUpdatesButton;
+
+
+    @OnClick(R.id.toggleButton) void onClick() {
+        if (!mToggleButton.isChecked()) {
+            mGeoListTextView.setVisibility(View.VISIBLE);
+        }
+        else {
+            mGeoListTextView.setVisibility(View.GONE);
+        }
+    }
+
 
     /**
      * Sets up the location request. Android has two location request settings:
@@ -813,6 +867,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      */
     @Override
     public void onLocationChanged(Location location) {
+        Log.d(TAG, "onLocationChanged invoked");
         mCurrentLocation = location;
         mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
         updateUI();
@@ -830,23 +885,76 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d(TAG, "onResume invoked");
         // Within {@code onPause()}, we pause location updates, but leave the
         // connection to GoogleApiClient intact.  Here, we resume receiving
         // location updates if the user has requested them.
+        String service_no = mSharedPreferences.getString("service_id","BPS1");
+        setTitle(service_no);
+
+        // Kick off the request to build GoogleApiClient.
+        buildGoogleApiClient();
+
+        mGoogleApiClient.connect();
+
+//        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
+//            startLocationUpdates();
+//        }
+
+        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        receiver = new MyBroadcastReceiver();
+        registerReceiver(receiver, filter);
 
         if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
             startLocationUpdates();
         }
+
+        addGeofencesButtonHandler(this.getCurrentFocus());
+
+        // Reload sharepreference
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        last_found = prefs.getInt("last_found", -1);
+        isLockedDir = prefs.getBoolean("isLockedDir", false);
+        busStop = prefs.getString("busStop", "");
+
+        // update the perference that activity is now active.
+        prefs.edit().putBoolean("isActivityForeground", true).apply();
+
+        // update the adapter to reflect based on geofence intent service
+        int foundIndex = -1;
+        if (!busStop.isEmpty()) foundIndex = findIndexOfBusStopsArray(busStop);
+        if (foundIndex != -1) updateRecyclerView(foundIndex);
+
+        mGeoListTextView.append("\nReload pref: last_found:" + last_found + " isLockedDir:" + isLockedDir);
+        mGeoListTextView.setMovementMethod(new ScrollingMovementMethod());
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // Stop location updates to save battery, but don't disconnect the GoogleApiClient object.
-        if (mGoogleApiClient.isConnected()) {
-            stopLocationUpdates();
+        Log.d(TAG, "onPause invoked");
+//        // Stop location updates to save battery, but don't disconnect the GoogleApiClient object.
+//        if (mGoogleApiClient.isConnected()) {
+//            stopLocationUpdates();
+//        }
+
+        ArrayList<String> arraySet = new ArrayList<>();
+        for (int index=0; index<busStops.size(); index++) {
+            arraySet.add(busStops.get(index).getBusStopNo()+":"+busStops.get(index).getBusStopName());
         }
+        SharedPreferenceHelper.setStringArrayPref(this, "busStops", arraySet);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("last_found", last_found);
+        editor.putBoolean("isLockedDir", isLockedDir);
+        editor.putBoolean("isActivityForeground", false);
+        editor.apply();
     }
+
+
+
 
     /**
      * Ensures that only one button is enabled at any time. The Start Updates button is enabled

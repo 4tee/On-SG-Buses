@@ -1,11 +1,10 @@
 package net.felixmyanmar.onsgbuses;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.drawable.AnimationDrawable;
-import android.preference.PreferenceManager;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,9 +14,6 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
-
-import org.json.JSONArray;
-import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,42 +27,7 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
     List<BusStops> orig;
     Context mContext;
 
-
-    private static void setIntegerArrayPref(Context context, String key, ArrayList<Integer> values) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences.Editor editor = prefs.edit();
-        JSONArray a = new JSONArray();
-        for (int i = 0; i < values.size(); i++) {
-            a.put(values.get(i));
-        }
-        if (!values.isEmpty()) {
-            editor.putString(key, a.toString());
-        } else {
-            editor.putString(key, null);
-        }
-        editor.apply();
-    }
-
-    public static ArrayList<Integer> getIntegerArrayPref(Context context, String key) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        String json = prefs.getString(key, null);
-        ArrayList<Integer> urls = new ArrayList<>();
-        if (json != null) {
-            try {
-                JSONArray a = new JSONArray(json);
-                for (int i = 0; i < a.length(); i++) {
-                    Integer url = a.getInt(i);
-                    urls.add(url);
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        return urls;
-    }
-
-
-
+    static String TAG = "on-rvadapter";
 
 
     public BusRVAdapter(Context context, ArrayList<BusStops> myDataset) {
@@ -127,7 +88,7 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
         int status = mDataset.get(position).getLed_status();
 
         holder.txtViewName.setText(BusName);
-        holder.txtViewStop.setText(BusStop + "");
+        holder.txtViewStop.setText(BusStop+"");
 
         switch (status) {
             case 1:
@@ -145,32 +106,27 @@ public class BusRVAdapter extends RecyclerView.Adapter<BusRVAdapter.ViewHolder> 
         // Sett all alarms to false first.. then get those in selectIds from SharePreference,
         // and enable it.
         selectedIds = new ArrayList<>();
-        selectedIds = getIntegerArrayPref(mContext,"selectedIds");
+        selectedIds = SharedPreferenceHelper.getIntegerArrayPref(mContext, "selectedIds");
         if (selectedIds != null) {
             for (int i=0; i<selectedIds.size(); i++) {
                 holder.toggleButton.setChecked(false);
             }
 
             for (int i=0; i<selectedIds.size(); i++) {
-                if (selectedIds.get(i) == BusStop) holder.toggleButton.setChecked(true);
+                if (selectedIds.get(i) == BusStop) {
+                    Log.d(TAG, "RVAdapter toggleButton: " + BusStop);
+                    holder.toggleButton.setChecked(true);
+                }
             }
         }
 
-//        holder.toggleButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
-//                else selectedIds.remove(Integer.valueOf(BusStop));
-//                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
-//            }
-//        });
         holder.cardView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 holder.toggleButton.toggle();
                 if (holder.toggleButton.isChecked()) selectedIds.add(BusStop);
                 else selectedIds.remove(Integer.valueOf(BusStop));
-                setIntegerArrayPref(mContext, "selectedIds", selectedIds);
+                SharedPreferenceHelper.setIntegerArrayPref(mContext, "selectedIds", selectedIds);
             }
         });
     }

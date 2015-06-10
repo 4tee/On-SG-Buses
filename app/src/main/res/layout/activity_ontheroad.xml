@@ -3,10 +3,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Log"
+        android:id="@+id/toggleButton" />
+
     <Button
         android:id="@+id/start_updates_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/toggleButton"
         android:layout_alignParentLeft="true"
         android:onClick="startUpdatesButtonHandler"
         android:text="@string/start_updates" />
@@ -16,6 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
+        android:layout_below="@id/toggleButton"
         android:enabled="false"
         android:onClick="stopUpdatesButtonHandler"
         android:text="@string/stop_updates" />
@@ -49,6 +57,7 @@
         android:id="@+id/latitude_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/add_geofences_button"
         android:text="@string/latitude_label"
@@ -58,6 +67,7 @@
         android:id="@+id/latitude_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignBaseline="@+id/latitude_label"
         android:layout_toRightOf="@+id/latitude_label"
         android:textColor="@color/red" />
@@ -66,6 +76,7 @@
         android:id="@+id/longitude_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/latitude_label"
         android:text="@string/longitude_label"
@@ -75,6 +86,7 @@
         android:id="@+id/longitude_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignBaseline="@+id/longitude_label"
         android:layout_toRightOf="@+id/longitude_label"
         android:textColor="@color/red" />
@@ -83,6 +95,7 @@
         android:id="@+id/last_update_time_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/longitude_label"
         android:text="@string/last_update_time_label"
@@ -92,6 +105,7 @@
         android:id="@+id/last_update_time_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignBaseline="@+id/last_update_time_label"
         android:layout_toRightOf="@+id/last_update_time_label"
         android:textColor="@color/red" />
@@ -100,7 +114,10 @@
         android:id="@+id/geolist_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="10sp"
         android:layout_alignParentLeft="true"
+        android:scrollbars="vertical"
+        android:includeFontPadding="false"
         android:layout_below="@+id/last_update_time_label"
         android:textColor="@color/red" />
 
