@@ -1,16 +1,12 @@
 package net.felixmyanmar.onsgbuses;
 
 import android.app.SearchManager;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -33,35 +29,16 @@ public class TerminalsActivity extends AppCompatActivity {
     @InjectView(R.id.cool_textView)
     TextView textView;
 
-    String TAG = "on-terminal";
-
-    private void clearPref(Context context, String key) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.remove(key);
-        editor.apply();
-
-        Log.d(TAG, "clear preference");
-    }
-
-    /**
-     * Dispatch onResume() to fragments.  Note that for better inter-operation
-     * with older versions of the platform, at the point of this call the
-     * fragments attached to the activity are <em>not</em> resumed.  This means
-     * that in some cases the previous state may still be saved, not allowing
-     * fragment transactions that modify the state.  To correctly interact
-     * with fragments in their proper state, you should instead override
-     * {@link #onResumeFragments()}.
-     */
     @Override
     protected void onResume() {
         super.onResume();
 
         // Clear all alarm stops
-        clearPref(this, "selectedIds");
-        clearPref(this, "last_found");
-        clearPref(this, "isLockedDir");
-        clearPref(this, "busStop");
+        SharedPreferenceHelper.clearPref(this, "selectedIds");
+        SharedPreferenceHelper.clearPref(this, "last_found");
+        SharedPreferenceHelper.clearPref(this, "isLockedDir");
+        SharedPreferenceHelper.clearPref(this, "busStop");
+        SharedPreferenceHelper.clearPref(this, "busStops");
     }
 
 

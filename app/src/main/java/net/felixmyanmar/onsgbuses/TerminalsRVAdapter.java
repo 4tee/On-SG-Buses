@@ -34,6 +34,7 @@ public class TerminalsRVAdapter extends RecyclerView.Adapter<TerminalsRVAdapter.
         return mDataset.size();
     }
 
+
     // Replace the contents of a view (invoked by the layout manager)
     @Override
     public void onBindViewHolder(ViewHolder holder, final int position) {
@@ -63,7 +64,6 @@ public class TerminalsRVAdapter extends RecyclerView.Adapter<TerminalsRVAdapter.
                 }
             }
         });
-
     }
 
 
@@ -81,7 +81,6 @@ public class TerminalsRVAdapter extends RecyclerView.Adapter<TerminalsRVAdapter.
             ButterKnife.inject(this, view);
         }
     }
-
 
 
     // Create new views (invoked by the layout manager)

@@ -16,10 +16,6 @@
 
 package net.felixmyanmar.onsgbuses.geofencing;
 
-import com.google.android.gms.maps.model.LatLng;
-
-import java.util.HashMap;
-
 /**
  * Constants used in this sample.
  */
@@ -30,7 +26,7 @@ public final class Constants {
 
     public static final String PACKAGE_NAME = "net.felixmyanmar.onsgbuses.geofencing";
 
-    public static final String SHARED_PREFERENCES_NAME = PACKAGE_NAME + ".SHARED_PREFERENCES_NAME";
+    //public static final String SHARED_PREFERENCES_NAME = PACKAGE_NAME + ".SHARED_PREFERENCES_NAME";
 
     public static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
@@ -45,19 +41,4 @@ public final class Constants {
      */
     public static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS =
             GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
-    public static final float GEOFENCE_RADIUS_IN_METERS = 100; // 0.1 km
-
-    /**
-     * Map for storing information about airports in the San Francisco bay area.
-     */
-    public static final HashMap<String, LatLng> SAMPLE_LANDMARKS = new HashMap<String, LatLng>();
-    static {
-        // Ngee Ann
-        SAMPLE_LANDMARKS.put("NP", new LatLng(1.3312, 103.7779));
-
-        // SIM
-        SAMPLE_LANDMARKS.put("SIM", new LatLng(1.3280, 103.7767));
-
-        // We will add according to the bus stop GPS coordinates.
-    }
 }

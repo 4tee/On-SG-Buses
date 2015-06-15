@@ -22,6 +22,7 @@ import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -58,21 +59,92 @@ import butterknife.InjectView;
 import butterknife.OnClick;
 
 
-public class OnTheRoadActivity extends AppCompatActivity implements SearchView.OnQueryTextListener,
-        ConnectionCallbacks, OnConnectionFailedListener, ResultCallback<Status>,
+public class OnTheRoadActivity extends AppCompatActivity implements
+        SearchView.OnQueryTextListener,
+        ConnectionCallbacks,
+        OnConnectionFailedListener,
+        ResultCallback<Status>,
         LocationListener {
-
-    ArrayList<BusStops> busStops;
-    BusRVAdapter mAdapter;
-    MyBroadcastReceiver receiver;
-    RecyclerView.LayoutManager mLayoutManager;
 
     // UI items
     @InjectView(R.id.cool_recycler_view) RecyclerView recyclerView;
     @InjectView(R.id.add_geofences_button) Button mAddGeofencesButton;
     @InjectView(R.id.remove_geofences_button) Button mRemoveGeofencesButton;
 
+    protected static final String TAG = "on-the-road";
 
+    // The list of all bus stops in the direction
+    private ArrayList<BusStops> busStops;
+
+    // AdapterView for RecyclerView
+    private BusRVAdapter mAdapter;
+
+    // Listener for IntentService
+    private MyBroadcastReceiver receiver;
+
+    // Provides the entry point to Google Play services.
+    protected GoogleApiClient mGoogleApiClient;
+
+    // The list of geofences.
+    protected ArrayList<Geofence> mGeofenceList;
+
+    // Used to keep track of whether geofences were added.
+    private boolean mGeofencesAdded;
+
+    // Used when requesting to add or remove geofences.
+    private PendingIntent mGeofencePendingIntent;
+
+    // Used to persist application state about whether geofences were added.
+    //private SharedPreferences mSharedPreferences;
+
+
+
+
+    @Override
+    public boolean onQueryTextSubmit(String query) {
+        return false;
+    }
+
+    @Override
+    public boolean onQueryTextChange(String newText) {
+        if (TextUtils.isEmpty(newText)) {
+            mAdapter.getFilter().filter("");
+        } else {
+            mAdapter.getFilter().filter(newText);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.control_menu, menu);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            SearchView searchView = (SearchView) menu.findItem(R.id.search).getActionView();
+            searchView.setQueryHint("Search Bus Stop No");
+            searchView.setOnQueryTextListener(this);
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.search:
+                onSearchRequested();
+                return true;
+            case R.id.refresh:
+                Toast.makeText(this,"Refresh",Toast.LENGTH_SHORT).show();
+                return true;
+            case R.id.stop:
+                Toast.makeText(this,"Stop",Toast.LENGTH_SHORT).show();
+                return true;
+            default:
+                return false;
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,36 +152,40 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
-        Log.d(TAG, "onCreate invoked");
 
-        mLayoutManager = new LinearLayoutManager(this);
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
 
+        // get the data sent from previous activity using intent
         Intent touchIntent = getIntent();
         String service_no = touchIntent.getStringExtra("service_id");
         int direction = touchIntent.getIntExtra("direction", 1);
 
-
-        // Retrieve an instance of the SharedPreferences object.
-        mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
-                MODE_PRIVATE);
+//        // Retrieve an instance of the SharedPreferences object.
+//        mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
+//                MODE_PRIVATE);
 
         // Get the value of mGeofencesAdded from SharedPreferences. Set to false as a default.
-        mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
-        Log.d(TAG, "mGeofencesAdded:" + mGeofencesAdded);
-        setButtonsEnabledState();
+//        mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
+//        setButtonsEnabledState();
 
-        if (service_no!=null) {
-            SharedPreferences.Editor editor = mSharedPreferences.edit();
-            editor.putString("service_id", service_no);
-            editor.putInt("direction", direction);
-            editor.apply();
+        if (service_no != null) {
+
+            SharedPreferenceHelper.setSharedStringPref(this, "service_id", service_no);
+            SharedPreferenceHelper.setSharedIntPref(this, "direction", direction);
+
+//            SharedPreferences.Editor editor = mSharedPreferences.edit();
+//            editor.putString("service_id", service_no);
+//            editor.putInt("direction", direction);
+//            editor.apply();
         } else {
-            service_no = mSharedPreferences.getString("service_id","BPS1");
-            direction = mSharedPreferences.getInt("direction", 1);
-        }
 
+            SharedPreferenceHelper.getSharedStringPref(this,"service_id","BPS1");
+            SharedPreferenceHelper.getSharedIntPref(this,"direction",1);
+//            service_no = mSharedPreferences.getString("service_id","BPS1");
+//            direction = mSharedPreferences.getInt("direction", 1);
+        }
 
         // List of bus stops along the direction
         CoolDatabase db = new CoolDatabase(this);
@@ -131,67 +207,87 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         // Initially set the PendingIntent used in addGeofences() and removeGeofences() to null.
         mGeofencePendingIntent = null;
 
-        // Get the geofences used. Geofence data is hard coded in this sample.
-        populateGeofenceList(0);
-
         // LocationUpdates
         mRequestingLocationUpdates = false;
         mLastUpdateTime = "";
+
+        // Get the geofences used. Geofence data is hard coded in this sample.
+        populateGeofenceList(0);
 
         // Update values using data stored in the Bundle.
         updateValuesFromBundle(savedInstanceState);
     }
 
-    /**
-     * Called when the user submits the query. This could be due to a key press on the
-     * keyboard or due to pressing a submit button.
-     * The listener can override the standard behavior by returning true
-     * to indicate that it has handled the submit request. Otherwise return false to
-     * let the SearchView handle the submission by launching any associated intent.
-     *
-     * @param query the query text that is to be submitted
-     * @return true if the query has been handled by the listener, false to let the
-     * SearchView perform the default action.
-     */
     @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
+    protected void onResume() {
+        super.onResume();
 
-    /**
-     * Called when the query text is changed by the user.
-     *
-     * @param newText the new content of the query text field.
-     * @return false if the SearchView should perform the default action of showing any
-     * suggestions if available, true if the action was handled by the listener.
-     */
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        if (TextUtils.isEmpty(newText)) {
-            mAdapter.getFilter().filter("");
-        } else {
-            mAdapter.getFilter().filter(newText);
+        // get sharedPreference value
+        last_found = SharedPreferenceHelper.getSharedIntPref(this,"last_found",-1);
+        isLockedDir = SharedPreferenceHelper.getSharedBooleanPref(this, "isLockedDir");
+        busStop = SharedPreferenceHelper.getSharedStringPref(this, "busStop", "");
+        SharedPreferenceHelper.setSharedBooleanPref(this,"isActivityForeground",true);
+
+        // you can set the bus service number as window title
+        setTitle(SharedPreferenceHelper.getSharedStringPref(this, "service_id","BPS1"));
+
+        // kick off the request to build GoogleApiClient.
+        buildGoogleApiClient();
+
+        // connect the mGoogleApiClient
+        mGoogleApiClient.connect();
+
+        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        receiver = new MyBroadcastReceiver();
+        registerReceiver(receiver, filter);
+
+        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
+            startLocationUpdates();
         }
-        return true;
-    }
 
+        //addGeofencesButtonHandler(this.getCurrentFocus());
+
+//        // Reload sharepreference
+//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+//        last_found = prefs.getInt("last_found", -1);
+//        isLockedDir = prefs.getBoolean("isLockedDir", false);
+//        busStop = prefs.getString("busStop", "");
+
+//        // update the perference that activity is now active.
+//        prefs.edit().putBoolean("isActivityForeground", true).apply();
+
+        // update the adapter to reflect based on geofence intent service
+        int foundIndex = -1;
+        if (!busStop.isEmpty()) foundIndex = findIndexOfBusStopsArray(busStop);
+        if (foundIndex != -1) updateRecyclerView(foundIndex);
+
+        mGeoListTextView.append("\nReload pref: last_found:" + last_found + " isLockedDir:" + isLockedDir);
+        mGeoListTextView.setMovementMethod(new ScrollingMovementMethod());
+    }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.options_menu, menu);
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause invoked");
+//        // Stop location updates to save battery, but don't disconnect the GoogleApiClient object.
+//        if (mGoogleApiClient.isConnected()) {
+//            stopLocationUpdates();
+//        }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-
-            SearchView searchView = (SearchView) menu.findItem(R.id.search).getActionView();
-            searchView.setQueryHint("Search Bus Stop No");
-            searchView.setOnQueryTextListener(this);
-
+        ArrayList<String> arraySet = new ArrayList<>();
+        for (int index=0; index<busStops.size(); index++) {
+            arraySet.add(busStops.get(index).getBusStopNo()+":"+busStops.get(index).getBusStopName());
         }
-        return true;
+        SharedPreferenceHelper.setStringArrayPref(this, "busStops", arraySet);
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("last_found", last_found);
+        editor.putBoolean("isLockedDir", isLockedDir);
+        editor.putBoolean("isActivityForeground", false);
+        editor.apply();
     }
-
 
     @Override
     protected void onStop() {
@@ -204,49 +300,9 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         }
     }
 
-//    @Override
-//    protected void onPostResume() {
-//        super.onPostResume();
-//        mGoogleApiClient.connect();
-//
-//        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
-//            startLocationUpdates();
-//        }
-//
-//        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
-//        filter.addCategory(Intent.CATEGORY_DEFAULT);
-//        receiver = new MyBroadcastReceiver();
-//        registerReceiver(receiver, filter);
-//
-//        isLockedDir = false;
-//    }
 
-    protected static final String TAG = "on-the-road";
 
-    /**
-     * Provides the entry point to Google Play services.
-     */
-    protected GoogleApiClient mGoogleApiClient;
 
-    /**
-     * The list of geofences used in this sample.
-     */
-    protected ArrayList<Geofence> mGeofenceList;
-
-    /**
-     * Used to keep track of whether geofences were added.
-     */
-    private boolean mGeofencesAdded;
-
-    /**
-     * Used when requesting to add or remove geofences.
-     */
-    private PendingIntent mGeofencePendingIntent;
-
-    /**
-     * Used to persist application state about whether geofences were added.
-     */
-    private SharedPreferences mSharedPreferences;
 
 
 
@@ -425,7 +481,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      */
     public void addGeofencesButtonHandler(View view) {
         if (!mGoogleApiClient.isConnected()) {
-            Toast.makeText(this, getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "add "+getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -453,7 +509,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
      */
     public void removeGeofencesButtonHandler(View view) {
         if (!mGoogleApiClient.isConnected()) {
-            Toast.makeText(this, getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "remove " + getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
@@ -488,9 +544,10 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         if (status.isSuccess()) {
             // Update state and save in shared preferences.
             mGeofencesAdded = !mGeofencesAdded;
-            SharedPreferences.Editor editor = mSharedPreferences.edit();
-            editor.putBoolean(Constants.GEOFENCES_ADDED_KEY, mGeofencesAdded);
-            editor.apply();
+//            SharedPreferences.Editor editor = mSharedPreferences.edit();
+//            editor.putBoolean(Constants.GEOFENCES_ADDED_KEY, mGeofencesAdded);
+//            editor.apply();
+            SharedPreferenceHelper.setSharedBooleanPref(this,Constants.GEOFENCES_ADDED_KEY, mGeofencesAdded);
 
             // Update the UI. Adding geofences enables the Remove Geofences button, and removing
             // geofences enables the Add Geofences button.
@@ -873,85 +930,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements SearchView.O
         updateUI();
     }
 
-    /**
-     * Dispatch onResume() to fragments.  Note that for better inter-operation
-     * with older versions of the platform, at the point of this call the
-     * fragments attached to the activity are <em>not</em> resumed.  This means
-     * that in some cases the previous state may still be saved, not allowing
-     * fragment transactions that modify the state.  To correctly interact
-     * with fragments in their proper state, you should instead override
-     * {@link #onResumeFragments()}.
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d(TAG, "onResume invoked");
-        // Within {@code onPause()}, we pause location updates, but leave the
-        // connection to GoogleApiClient intact.  Here, we resume receiving
-        // location updates if the user has requested them.
-        String service_no = mSharedPreferences.getString("service_id","BPS1");
-        setTitle(service_no);
 
-        // Kick off the request to build GoogleApiClient.
-        buildGoogleApiClient();
-
-        mGoogleApiClient.connect();
-
-//        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
-//            startLocationUpdates();
-//        }
-
-        IntentFilter filter = new IntentFilter(MyBroadcastReceiver.RESPONSE);
-        filter.addCategory(Intent.CATEGORY_DEFAULT);
-        receiver = new MyBroadcastReceiver();
-        registerReceiver(receiver, filter);
-
-        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
-            startLocationUpdates();
-        }
-
-        addGeofencesButtonHandler(this.getCurrentFocus());
-
-        // Reload sharepreference
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        last_found = prefs.getInt("last_found", -1);
-        isLockedDir = prefs.getBoolean("isLockedDir", false);
-        busStop = prefs.getString("busStop", "");
-
-        // update the perference that activity is now active.
-        prefs.edit().putBoolean("isActivityForeground", true).apply();
-
-        // update the adapter to reflect based on geofence intent service
-        int foundIndex = -1;
-        if (!busStop.isEmpty()) foundIndex = findIndexOfBusStopsArray(busStop);
-        if (foundIndex != -1) updateRecyclerView(foundIndex);
-
-        mGeoListTextView.append("\nReload pref: last_found:" + last_found + " isLockedDir:" + isLockedDir);
-        mGeoListTextView.setMovementMethod(new ScrollingMovementMethod());
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Log.d(TAG, "onPause invoked");
-//        // Stop location updates to save battery, but don't disconnect the GoogleApiClient object.
-//        if (mGoogleApiClient.isConnected()) {
-//            stopLocationUpdates();
-//        }
-
-        ArrayList<String> arraySet = new ArrayList<>();
-        for (int index=0; index<busStops.size(); index++) {
-            arraySet.add(busStops.get(index).getBusStopNo()+":"+busStops.get(index).getBusStopName());
-        }
-        SharedPreferenceHelper.setStringArrayPref(this, "busStops", arraySet);
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("last_found", last_found);
-        editor.putBoolean("isLockedDir", isLockedDir);
-        editor.putBoolean("isActivityForeground", false);
-        editor.apply();
-    }
 
 
 
