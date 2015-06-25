@@ -8,10 +8,10 @@ import android.util.Log;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 
-import net.felixmyanmar.onsgbuses.NotificationHelper;
-import net.felixmyanmar.onsgbuses.OnTheRoadActivity;
+import net.felixmyanmar.onsgbuses.helper.NotificationHelper;
+import net.felixmyanmar.onsgbuses.app.OnTheRoadActivity;
 import net.felixmyanmar.onsgbuses.R;
-import net.felixmyanmar.onsgbuses.SharedPreferenceHelper;
+import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,69 +38,95 @@ public class GeofenceIntentService extends IntentService {
     // busStops holds all the bus stops along a direction
     private ArrayList<String> busStops;
 
-//    private static void setSharedStringPref(Context context, String key, String value) {
-//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-//        SharedPreferences.Editor editor = prefs.edit();
-//        editor.putString(key, value);
-//        editor.apply();
-//    }
-//
-//    private static void setSharedIntPref(Context context, String key, int value) {
-//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-//        SharedPreferences.Editor editor = prefs.edit();
-//        editor.putInt(key, value);
-//        editor.apply();
-//    }
-//
-//    private boolean isActivityForeground(Context context) {
-//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-//        return prefs.getBoolean("isActivityForeground", false);
-//    }
-//
-//    /**
-//     * Find the array index of @busStops given the search bus stop.
-//     * @param searchBusStop a string to search inside the array
-//     * @return index of search string
-//     */
-//    private int findIndexOfBusStopsArray(String searchBusStop) {
-//        int foundIndex = -1;
-//        for (int i = 0; i < busStops.size(); i++) {
-//            if (busStops.get(i).contains(searchBusStop)) {
-//                foundIndex = i;
-//                break;
-//            }
-//        }
-//        return foundIndex;
-//    }
 
-//    /**
-//     * Maps geofence transition types to their human-readable equivalents.
-//     *
-//     * @param transitionType A transition type constant defined in Geofence
-//     * @return A String indicating the type of transition
-//     */
-//    private String getTransitionString(int transitionType) {
-//        switch (transitionType) {
-//            case Geofence.GEOFENCE_TRANSITION_ENTER:
-//                return getString(R.string.geofence_transition_entered);
-//            case Geofence.GEOFENCE_TRANSITION_EXIT:
-//                return getString(R.string.geofence_transition_exited);
-//            default:
-//                return getString(R.string.unknown_geofence_transition);
-//        }
-//    }
-//
-//    private void getSharedPerference() {
-//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-//        last_found = prefs.getInt("last_found", -1);
-//        isLockedDir = prefs.getBoolean("isLockedDir", false);
-//        busStops = SharedPreferenceHelper.getStringArrayPref(this, "busStops");
-//    }
+    private boolean isActivelyRunning = false;
 
 
     public GeofenceIntentService() {
         // Use the TAG to name the worker thread.
         super(TAG);
+    }
+
+    /**
+     * Handles incoming intents.
+     *
+     * @param intent sent by Location Services. This Intent is provided to Location
+     *               Services (inside a PendingIntent) when addGeofences() is called.
+     */
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        ArrayList<Integer> selectedIds;
+
+        GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
+        if (geofencingEvent.hasError()) {
+            String errorMessage = GeofenceErrorMessages.getErrorString(this,
+                    geofencingEvent.getErrorCode());
+            Log.e(TAG, errorMessage);
+            return;
+        }
+
+        // Get the transition type.
+        int geofenceTransition = geofencingEvent.getGeofenceTransition();
+
+        // Test that the reported transition was of interest.
+        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+
+            // Get the latest shared preference value
+            last_found = SharedPreferenceHelper.getSharedIntPref(this, "last_found", -1);
+            isLockedDir = SharedPreferenceHelper.getSharedBooleanPref(this, "isLockedDir");
+            busStops = SharedPreferenceHelper.getStringArrayPref(this, "busStops");
+            isActivelyRunning = SharedPreferenceHelper.getSharedBooleanPref(this, "isActivityForeground");
+
+            // Get the geofences that were triggered. A single event can trigger multiple geofences.
+            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+
+            // Get the transition details as a String.
+            String geofenceTransitionDetails = getGeofenceTransitionDetails(triggeringGeofences);
+
+            String[] args = findBusStopFromRecord(geofenceTransitionDetails);
+            String currentStop = args[0];
+            String currentBusName = args[1];
+
+            // Store the busStop into SharedPreference so that when the route is shown,
+            // it will automatically scroll to there.
+            if (!currentStop.isEmpty()) SharedPreferenceHelper.setSharedStringPref(this, "busStop", currentStop);
+
+            // Get the index from busStops array
+            int found = busStops.indexOf(currentStop+":"+currentBusName);
+            if (found > last_found) SharedPreferenceHelper.setSharedIntPref(this, "last_found", found);
+
+            tryLockDirection(found);
+
+            if (found > last_found && isLockedDir && !isActivelyRunning) {
+                // send notification without the sound and vibration
+                NotificationHelper.showNotification(this, "Next Stop: " + currentBusName, false);
+            }
+
+            // this gives you a list of all the bus stops that needs to trigger the notification
+            selectedIds = SharedPreferenceHelper.getIntegerArrayPref(this, "selectedIds");
+
+            for (int i = 0; i < selectedIds.size(); i++) {
+                if (currentStop.equals(selectedIds.get(i) + "")) {
+                    if (!isActivelyRunning)
+                    NotificationHelper.showNotification(this, "Next Stop: " + currentBusName, true);
+                    break;
+                }
+            }
+
+            // send broadcast only when the activity is on foreground
+            if (SharedPreferenceHelper.getSharedBooleanPref(this, "isActivityForeground")) {
+                // Broadcast receiver to send back the info to Activity
+                Intent broadcastIntent = new Intent();
+                broadcastIntent.setAction(OnTheRoadActivity.MyBroadcastReceiver.RESPONSE);
+                broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
+                broadcastIntent.putExtra("Details", geofenceTransitionDetails);
+                sendBroadcast(broadcastIntent);
+            }
+
+        } else {
+            // Log the error.
+            Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
+        }
     }
 
 
@@ -129,14 +155,6 @@ public class GeofenceIntentService extends IntentService {
             busStop = tokens.get(1);
             busName = tokens.get(2);
 
-//            if (tokens.size() > 2) {
-//                busStop = tokens.get(1);
-//                busName = tokens.get(2);
-//            } else {
-//                busStop = tokens.get(0);
-//                busName = tokens.get(1);
-//            }
-            //int found = findIndexOfBusStopsArray(busStop);
             int found = busStops.indexOf(busStop+":"+busName);
             if (found > last_found) break;
         }
@@ -152,89 +170,7 @@ public class GeofenceIntentService extends IntentService {
         }
     }
 
-    /**
-     * Handles incoming intents.
-     *
-     * @param intent sent by Location Services. This Intent is provided to Location
-     *               Services (inside a PendingIntent) when addGeofences() is called.
-     */
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        ArrayList<Integer> selectedIds;
 
-        GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
-        if (geofencingEvent.hasError()) {
-            String errorMessage = GeofenceErrorMessages.getErrorString(this,
-                    geofencingEvent.getErrorCode());
-            Log.e(TAG, errorMessage);
-            return;
-        }
-
-        // Get the transition type.
-        int geofenceTransition = geofencingEvent.getGeofenceTransition();
-
-        // Test that the reported transition was of interest.
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-
-            // Get the latest sharedperference
-//            getSharedPerference();
-            last_found = SharedPreferenceHelper.getSharedIntPref(this, "last_found", -1);
-            isLockedDir = SharedPreferenceHelper.getSharedBooleanPref(this, "isLockedDir");
-            busStops = SharedPreferenceHelper.getStringArrayPref(this, "busStops");
-
-
-            // Get the geofences that were triggered. A single event can trigger multiple geofences.
-            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
-
-            // Get the transition details as a String.
-            String geofenceTransitionDetails = getGeofenceTransitionDetails(triggeringGeofences);
-
-            String[] args = findBusStopFromRecord(geofenceTransitionDetails);
-            String currentStop = args[0];
-            String currentBusName = args[1];
-
-            // Store the busStop into SharedPreference so that when the route is shown,
-            // it will automatically scroll to there.
-            if (!currentStop.isEmpty()) SharedPreferenceHelper.setSharedStringPref(this, "busStop", currentStop);
-            //int found = findIndexOfBusStopsArray(currentStop);
-
-            int found = busStops.indexOf(currentStop+":"+currentBusName);
-            Log.d(TAG,"IntentService found: " + found);
-
-            if (found > last_found) SharedPreferenceHelper.setSharedIntPref(this, "last_found", found);
-
-            tryLockDirection(found);
-
-            if (found > last_found && isLockedDir) {
-                // send notification without the sound and vibration
-                NotificationHelper.sendContNotification(this, "Next Stop: " + currentBusName);
-            }
-
-            // this gives you a list of all the bus stops that needs to trigger the notification
-            selectedIds = SharedPreferenceHelper.getIntegerArrayPref(this, "selectedIds");
-
-            for (int i = 0; i < selectedIds.size(); i++) {
-                if (currentStop.equals(selectedIds.get(i) + "")) {
-                    NotificationHelper.sendNotification(this, "Next Stop: " + currentBusName);
-                    break;
-                }
-            }
-
-            // send broadcast only when the activity is on foreground
-            if (SharedPreferenceHelper.getSharedBooleanPref(this, "isActivityForeground")) {
-                // Broadcast receiver to send back the info to Activity
-                Intent broadcastIntent = new Intent();
-                broadcastIntent.setAction(OnTheRoadActivity.MyBroadcastReceiver.RESPONSE);
-                broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-                broadcastIntent.putExtra("Details", geofenceTransitionDetails);
-                sendBroadcast(broadcastIntent);
-            }
-
-        } else {
-            // Log the error.
-            Log.e(TAG, getString(R.string.geofence_transition_invalid_type, geofenceTransition));
-        }
-    }
 
     /**
      * Gets transition details and returns them as a formatted string.
@@ -243,8 +179,6 @@ public class GeofenceIntentService extends IntentService {
      * @return The transition details formatted as String.
      */
     private String getGeofenceTransitionDetails(List<Geofence> triggeringGeofences) {
-
-        //String geofenceTransitionString = getTransitionString(geofenceTransition);
 
         // Get the Ids of each geofence that was triggered.
         ArrayList triggeringGeofencesIdsList = new ArrayList();

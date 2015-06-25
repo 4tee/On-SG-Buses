@@ -1,14 +1,24 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.app;
 
 import android.app.SearchManager;
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.SearchRecentSuggestions;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.TextView;
+
+import net.felixmyanmar.onsgbuses.R;
+import net.felixmyanmar.onsgbuses.container.BusRoute;
+import net.felixmyanmar.onsgbuses.container.BusStops;
+import net.felixmyanmar.onsgbuses.container.BusTerminal;
+import net.felixmyanmar.onsgbuses.database.CoolDatabase;
+import net.felixmyanmar.onsgbuses.helper.MyRecentSuggestionProvider;
+import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -29,6 +39,12 @@ public class TerminalsActivity extends AppCompatActivity {
     @InjectView(R.id.cool_textView)
     TextView textView;
 
+    @InjectView(R.id.toolbar)
+    Toolbar toolBar;
+
+    @InjectView(R.id.lbl_title)
+    TextView titleLabel;
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -46,7 +62,22 @@ public class TerminalsActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_terminals);
+
         ButterKnife.inject(this);
+        setTitle("");
+        setSupportActionBar(toolBar);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+
+//        toolBar.setNavigationIcon(ResourcesCompat.getDrawable(getResources(),R.drawable.ic_action_add_circle,getTheme()));
+//        toolBar.setNavigationOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                onBackPressed();
+//            }
+//        });
+
 
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
@@ -70,13 +101,23 @@ public class TerminalsActivity extends AppCompatActivity {
             query = intent.getStringExtra(SearchManager.QUERY);
         }
 
+        if (service_no == null) {
+            service_no = SharedPreferenceHelper.getSharedStringPref(this,"service_id",null);
+        }
+
+
         if (service_no != null) {
             query = service_no;
         }
 
         if (query!=null) {
 
-            setTitle(query);
+            // Save it into the recent search
+            SearchRecentSuggestions suggestions = new SearchRecentSuggestions(this,
+                    MyRecentSuggestionProvider.AUTHORITY, MyRecentSuggestionProvider.MODE);
+            suggestions.saveRecentQuery(query, null);
+
+            titleLabel.setText(query);
 
             CoolDatabase db = new CoolDatabase(this);
             busRoutes = db.getBusRoute(query);

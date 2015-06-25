@@ -3,10 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <include android:id="@+id/toolbar" layout="@layout/widget_toolbar"/>
+
     <ToggleButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/toolbar"
         android:text="Log"
+        android:visibility="gone"
         android:id="@+id/toggleButton" />
 
     <Button
@@ -16,6 +20,7 @@
         android:layout_below="@id/toggleButton"
         android:layout_alignParentLeft="true"
         android:onClick="startUpdatesButtonHandler"
+        android:visibility="gone"
         android:text="@string/start_updates" />
 
     <Button
@@ -26,6 +31,7 @@
         android:layout_below="@id/toggleButton"
         android:enabled="false"
         android:onClick="stopUpdatesButtonHandler"
+        android:visibility="gone"
         android:text="@string/stop_updates" />
 
     <Button
@@ -61,6 +67,7 @@
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/add_geofences_button"
         android:text="@string/latitude_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -70,6 +77,7 @@
         android:textSize="10sp"
         android:layout_alignBaseline="@+id/latitude_label"
         android:layout_toRightOf="@+id/latitude_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -80,6 +88,7 @@
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/latitude_label"
         android:text="@string/longitude_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -89,6 +98,7 @@
         android:textSize="10sp"
         android:layout_alignBaseline="@+id/longitude_label"
         android:layout_toRightOf="@+id/longitude_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -99,6 +109,7 @@
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/longitude_label"
         android:text="@string/last_update_time_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -108,6 +119,7 @@
         android:textSize="10sp"
         android:layout_alignBaseline="@+id/last_update_time_label"
         android:layout_toRightOf="@+id/last_update_time_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
     <TextView
@@ -119,6 +131,7 @@
         android:scrollbars="vertical"
         android:includeFontPadding="false"
         android:layout_below="@+id/last_update_time_label"
+        android:visibility="gone"
         android:textColor="@color/red" />
 
 </RelativeLayout>

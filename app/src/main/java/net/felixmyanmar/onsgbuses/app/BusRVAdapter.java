@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.app;
 
 import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
@@ -14,6 +14,10 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
+
+import net.felixmyanmar.onsgbuses.R;
+import net.felixmyanmar.onsgbuses.container.BusStops;
+import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.util.ArrayList;
 import java.util.List;

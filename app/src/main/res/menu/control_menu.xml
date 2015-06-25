@@ -4,12 +4,14 @@
 
     <item android:id="@+id/refresh"
         android:title="Refresh"
+        app:showAsAction="ifRoom"
         android:icon="@drawable/ic_action_autorenew"/>
 
     <item
         android:id="@+id/stop"
         android:title="Stop"
-        android:icon="@drawable/ic_action_stop"/>
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/ic_action_pause_circle_outline"/>
 
     <item android:id="@+id/search"
         android:title="@string/search_bus"

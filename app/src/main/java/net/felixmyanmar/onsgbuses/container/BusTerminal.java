@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.container;
 
 
 public class BusTerminal {

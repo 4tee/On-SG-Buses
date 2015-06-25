@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.app;
 
 import android.app.Activity;
 import android.app.ActivityOptions;
@@ -12,6 +12,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import net.felixmyanmar.onsgbuses.R;
+import net.felixmyanmar.onsgbuses.container.BusTerminal;
 
 import java.util.ArrayList;
 

@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.app;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -16,6 +16,7 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -41,10 +42,14 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import net.felixmyanmar.onsgbuses.R;
+import net.felixmyanmar.onsgbuses.container.BusStops;
+import net.felixmyanmar.onsgbuses.database.CoolDatabase;
 import net.felixmyanmar.onsgbuses.geofencing.Constants;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceErrorMessages;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceIntentService;
 import net.felixmyanmar.onsgbuses.geofencing.Midpoint;
+import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -56,7 +61,6 @@ import java.util.StringTokenizer;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
-import butterknife.OnClick;
 
 
 public class OnTheRoadActivity extends AppCompatActivity implements
@@ -70,6 +74,8 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     @InjectView(R.id.cool_recycler_view) RecyclerView recyclerView;
     @InjectView(R.id.add_geofences_button) Button mAddGeofencesButton;
     @InjectView(R.id.remove_geofences_button) Button mRemoveGeofencesButton;
+    @InjectView(R.id.toolbar) Toolbar toolBar;
+    @InjectView(R.id.lbl_title) TextView titleLabel;
 
     protected static final String TAG = "on-the-road";
 
@@ -136,10 +142,14 @@ public class OnTheRoadActivity extends AppCompatActivity implements
                 onSearchRequested();
                 return true;
             case R.id.refresh:
-                Toast.makeText(this,"Refresh",Toast.LENGTH_SHORT).show();
+                startUpdatesHandler();
+                addGeofences();
+                Toast.makeText(this,"Please wait. Searching for location",Toast.LENGTH_SHORT).show();
                 return true;
             case R.id.stop:
-                Toast.makeText(this,"Stop",Toast.LENGTH_SHORT).show();
+                stopUpdatesHandler();
+                removeGeofences();
+                Toast.makeText(this,"System stopped.",Toast.LENGTH_SHORT).show();
                 return true;
             default:
                 return false;
@@ -153,6 +163,12 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
 
+        setTitle("");
+        setSupportActionBar(toolBar);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -161,6 +177,8 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         Intent touchIntent = getIntent();
         String service_no = touchIntent.getStringExtra("service_id");
         int direction = touchIntent.getIntExtra("direction", 1);
+
+
 
 //        // Retrieve an instance of the SharedPreferences object.
 //        mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
@@ -171,20 +189,11 @@ public class OnTheRoadActivity extends AppCompatActivity implements
 //        setButtonsEnabledState();
 
         if (service_no != null) {
-
             SharedPreferenceHelper.setSharedStringPref(this, "service_id", service_no);
             SharedPreferenceHelper.setSharedIntPref(this, "direction", direction);
-
-//            SharedPreferences.Editor editor = mSharedPreferences.edit();
-//            editor.putString("service_id", service_no);
-//            editor.putInt("direction", direction);
-//            editor.apply();
         } else {
-
-            SharedPreferenceHelper.getSharedStringPref(this,"service_id","BPS1");
-            SharedPreferenceHelper.getSharedIntPref(this,"direction",1);
-//            service_no = mSharedPreferences.getString("service_id","BPS1");
-//            direction = mSharedPreferences.getInt("direction", 1);
+            service_no = SharedPreferenceHelper.getSharedStringPref(this,"service_id","BPS1");
+            direction = SharedPreferenceHelper.getSharedIntPref(this,"direction",1);
         }
 
         // List of bus stops along the direction
@@ -222,6 +231,12 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     protected void onResume() {
         super.onResume();
 
+        String notifListen = getIntent().getAction();
+        if (notifListen!=null && notifListen.equals("exit")) {
+            Toast.makeText(this, "Stopping", Toast.LENGTH_SHORT).show();
+        }
+
+
         // get sharedPreference value
         last_found = SharedPreferenceHelper.getSharedIntPref(this,"last_found",-1);
         isLockedDir = SharedPreferenceHelper.getSharedBooleanPref(this, "isLockedDir");
@@ -229,7 +244,8 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         SharedPreferenceHelper.setSharedBooleanPref(this,"isActivityForeground",true);
 
         // you can set the bus service number as window title
-        setTitle(SharedPreferenceHelper.getSharedStringPref(this, "service_id","BPS1"));
+        //setTitle(SharedPreferenceHelper.getSharedStringPref(this, "service_id","BPS1"));
+        titleLabel.setText(SharedPreferenceHelper.getSharedStringPref(this, "service_id","BPS1"));
 
         // kick off the request to build GoogleApiClient.
         buildGoogleApiClient();
@@ -292,7 +308,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     @Override
     protected void onStop() {
         super.onStop();
-        if (mGoogleApiClient!=null) mGoogleApiClient.disconnect();
+        //if (mGoogleApiClient!=null) mGoogleApiClient.disconnect();
         try {
             this.unregisterReceiver(receiver);
         } catch (IllegalArgumentException iae) {
@@ -301,32 +317,33 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     }
 
 
+    /**
+     * Take care of popping the fragment back stack or finishing the activity
+     * as appropriate.
+     */
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        Log.d(TAG, "onBackPressed");
+        stopUpdatesHandler();
+        removeGeofences();
 
+        if (mGoogleApiClient!=null) mGoogleApiClient.disconnect();
 
-
-
+    }
 
     @Override
     public void onConnected(Bundle bundle) {
-        // If the initial location was never previously requested, we use
-        // FusedLocationApi.getLastLocation() to get it. If it was previously requested, we store
-        // its value in the Bundle and check for it in onCreate(). We
-        // do not request it again unless the user specifically requests location updates by pressing
-        // the Start Updates button.
-        //
-        // Because we cache the value of the initial location in the Bundle, it means that if the
-        // user launches the activity,
-        // moves to a new location, and then changes the device orientation, the original location
-        // is displayed as the activity is re-created.
+
         if (mCurrentLocation == null) {
             mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
             mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
             updateUI();
+
+            addGeofences();
+            startUpdatesHandler();
         }
 
-        // If the user presses the Start Updates button before GoogleApiClient connects, we set
-        // mRequestingLocationUpdates to true (see startUpdatesButtonHandler()). Here, we check
-        // the value of mRequestingLocationUpdates and if it is true, we start location updates.
         if (mRequestingLocationUpdates) {
             startLocationUpdates();
         }
@@ -334,16 +351,12 @@ public class OnTheRoadActivity extends AppCompatActivity implements
 
     @Override
     public void onConnectionSuspended(int i) {
-        // The connection to Google Play services was lost for some reason. We call connect() to
-        // attempt to re-establish the connection.
         Toast.makeText(this, TAG + ": Connection suspended", Toast.LENGTH_SHORT).show();
         mGoogleApiClient.connect();
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-        // Refer to the javadoc for ConnectionResult to see what error codes might be returned in
-        // onConnectionFailed.
         Toast.makeText(this, TAG + ": Connection error - " + connectionResult.getErrorCode(),
                 Toast.LENGTH_SHORT).show();
     }
@@ -475,11 +488,15 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     }
 
 
+    public void addGeofencesButtonHandler(View view) {
+        addGeofences();
+    }
+
     /**
      * Adds geofences, which sets alerts to be notified when the device enters or exits one of the
      * specified geofences. Handles the success or failure results returned by addGeofences().
      */
-    public void addGeofencesButtonHandler(View view) {
+    private void addGeofences() {
         if (!mGoogleApiClient.isConnected()) {
             Toast.makeText(this, "add "+getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
             return;
@@ -503,11 +520,13 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         }
     }
 
-    /**
-     * Removes geofences, which stops further notifications when the device enters or exits
-     * previously registered geofences.
-     */
+
     public void removeGeofencesButtonHandler(View view) {
+        removeGeofences();
+    }
+
+
+    private void removeGeofences() {
         if (!mGoogleApiClient.isConnected()) {
             Toast.makeText(this, "remove " + getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
             return;
@@ -782,9 +801,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     }
 
 
-
-
-
     /**
      * Stores parameters for requests to the FusedLocationProviderApi.
      */
@@ -833,14 +849,14 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     @InjectView(R.id.stop_updates_button) Button mStopUpdatesButton;
 
 
-    @OnClick(R.id.toggleButton) void onClick() {
-        if (!mToggleButton.isChecked()) {
-            mGeoListTextView.setVisibility(View.VISIBLE);
-        }
-        else {
-            mGeoListTextView.setVisibility(View.GONE);
-        }
-    }
+//    @OnClick(R.id.toggleButton) void onClick() {
+//        if (!mToggleButton.isChecked()) {
+//            mGeoListTextView.setVisibility(View.VISIBLE);
+//        }
+//        else {
+//            mGeoListTextView.setVisibility(View.GONE);
+//        }
+//    }
 
 
     /**
@@ -876,10 +892,10 @@ public class OnTheRoadActivity extends AppCompatActivity implements
      * Handles the Start Updates button and requests start of location updates. Does nothing if
      * updates have already been requested.
      */
-    public void startUpdatesButtonHandler(View view) {
+    private void startUpdatesHandler() {
         if (!mRequestingLocationUpdates) {
             mRequestingLocationUpdates = true;
-            setLocationButtonsEnabledState();
+            //setLocationButtonsEnabledState();
             startLocationUpdates();
         }
     }
@@ -888,10 +904,10 @@ public class OnTheRoadActivity extends AppCompatActivity implements
      * Handles the Stop Updates button, and requests removal of location updates. Does nothing if
      * updates were not previously requested.
      */
-    public void stopUpdatesButtonHandler(View view) {
+    private void stopUpdatesHandler() {
         if (mRequestingLocationUpdates) {
             mRequestingLocationUpdates = false;
-            setLocationButtonsEnabledState();
+            //setLocationButtonsEnabledState();
             stopLocationUpdates();
         }
     }
@@ -973,7 +989,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements
             if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
                 mRequestingLocationUpdates = savedInstanceState.getBoolean(
                         REQUESTING_LOCATION_UPDATES_KEY);
-                setLocationButtonsEnabledState();
+                //setLocationButtonsEnabledState();
             }
 
             // Update the value of mCurrentLocation from the Bundle and update the UI to show the

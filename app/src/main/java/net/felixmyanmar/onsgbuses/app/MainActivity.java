@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.app;
 
 import android.app.ActivityOptions;
 import android.app.SearchManager;
@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.transition.Fade;
 import android.view.Menu;
@@ -16,6 +17,9 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+
+import net.felixmyanmar.onsgbuses.R;
+import net.felixmyanmar.onsgbuses.database.CoolDatabase;
 
 import java.util.ArrayList;
 
@@ -45,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         }
     }
 
+    @InjectView(R.id.toolbar) Toolbar toolBar;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +57,8 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 
         // dependency injection
         ButterKnife.inject(this);
+        setTitle("");
+        setSupportActionBar(toolBar);
 
         CoolDatabase coolDatabase = new CoolDatabase(this);
         allBusNos = coolDatabase.getAllBusServices();

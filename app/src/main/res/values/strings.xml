@@ -41,4 +41,8 @@
     <string name="stop_updates">Stop updates</string>
 
     <string name="last_update_time_label">Last location update time: </string>
+    <string name="title_activity_notification_result">NotificationResultActivity</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
 </resources>

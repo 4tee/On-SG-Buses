@@ -1,10 +1,13 @@
-package net.felixmyanmar.onsgbuses;
+package net.felixmyanmar.onsgbuses.database;
 
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.readystatesoftware.sqliteasset.SQLiteAssetHelper;
+
+import net.felixmyanmar.onsgbuses.container.BusRoute;
+import net.felixmyanmar.onsgbuses.container.BusStops;
 
 import java.util.ArrayList;
 
