@@ -44,19 +44,16 @@ import com.google.android.gms.location.LocationServices;
 
 import net.felixmyanmar.onsgbuses.R;
 import net.felixmyanmar.onsgbuses.container.BusStops;
-import net.felixmyanmar.onsgbuses.database.CoolDatabase;
 import net.felixmyanmar.onsgbuses.geofencing.Constants;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceErrorMessages;
+import net.felixmyanmar.onsgbuses.geofencing.GeofenceHelper;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceIntentService;
-import net.felixmyanmar.onsgbuses.container.Midpoint;
 import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.StringTokenizer;
 
 import butterknife.ButterKnife;
@@ -79,31 +76,15 @@ public class OnTheRoadActivity extends AppCompatActivity implements
 
     protected static final String TAG = "on-the-road";
 
-    // The list of all bus stops in the direction
-    private ArrayList<BusStops> busStops;
 
-    // AdapterView for RecyclerView
-    private BusRVAdapter mAdapter;
+    private ArrayList<BusStops> busStops; // The list of all bus stops in the direction
+    private BusRVAdapter mAdapter; // AdapterView for RecyclerView
+    private MyBroadcastReceiver receiver; // Listener for IntentService to Activity
 
-    // Listener for IntentService
-    private MyBroadcastReceiver receiver;
-
-    // Provides the entry point to Google Play services.
-    protected GoogleApiClient mGoogleApiClient;
-
-    // The list of geofences.
-    protected ArrayList<Geofence> mGeofenceList;
-
-    // Used to keep track of whether geofences were added.
-    private boolean mGeofencesAdded;
-
-    // Used when requesting to add or remove geofences.
-    private PendingIntent mGeofencePendingIntent;
-
-    // Used to persist application state about whether geofences were added.
-    //private SharedPreferences mSharedPreferences;
-
-
+    protected GoogleApiClient mGoogleApiClient; // Provides the entry point to Google Play services.
+    protected ArrayList<Geofence> mGeofenceList; // The list of geofences.
+    private boolean mGeofencesAdded; // Used to keep track of whether geofences were added.
+    private PendingIntent mGeofencePendingIntent; // Used when requesting to add or remove geofences.
 
 
     @Override
@@ -138,22 +119,25 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.search:
-                onSearchRequested();
-                return true;
-            case R.id.refresh:
-                startUpdatesHandler();
-                addGeofences();
-                Toast.makeText(this,"Please wait. Searching for location",Toast.LENGTH_SHORT).show();
-                return true;
-            case R.id.stop:
-                stopUpdatesHandler();
-                removeGeofences();
-                Toast.makeText(this,"System stopped.",Toast.LENGTH_SHORT).show();
-                return true;
-            default:
-                return false;
+            case R.id.search: onSearchRequested(); return true;
+            case R.id.refresh: startMonitoring(); return true;
+            case R.id.stop: stopMonitoring(); return true;
+            default: return false;
         }
+    }
+
+
+    private void startMonitoring() {
+        startUpdatesHandler();
+        if (!mGeofencesAdded) addGeofences();
+        Toast.makeText(this,"Please wait. Searching for location",Toast.LENGTH_SHORT).show();
+    }
+
+    private void stopMonitoring() {
+        removeGeofences();
+        mGeofencesAdded = false;
+        stopUpdatesHandler();
+        Toast.makeText(this,"System stopped.",Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -163,9 +147,7 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_ontheroad);
         ButterKnife.inject(this);
 
-        setTitle("");
-        setSupportActionBar(toolBar);
-
+        setTitle(""); setSupportActionBar(toolBar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
 
@@ -178,40 +160,27 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         String service_no = touchIntent.getStringExtra("service_id");
         int direction = touchIntent.getIntExtra("direction", 1);
 
-
-
-//        // Retrieve an instance of the SharedPreferences object.
-//        mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME,
-//                MODE_PRIVATE);
-
-        // Get the value of mGeofencesAdded from SharedPreferences. Set to false as a default.
-//        mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
-//        setButtonsEnabledState();
-
         if (service_no != null) {
             SharedPreferenceHelper.setSharedStringPref(this, "service_id", service_no);
             SharedPreferenceHelper.setSharedIntPref(this, "direction", direction);
-        } else {
-            service_no = SharedPreferenceHelper.getSharedStringPref(this,"service_id","BPS1");
-            direction = SharedPreferenceHelper.getSharedIntPref(this,"direction",1);
         }
 
         // List of bus stops along the direction
-        CoolDatabase db = new CoolDatabase(this);
-        ArrayList<BusStops> routeStartStops = db.getBusStops(service_no, direction, false);
-        ArrayList<BusStops> routeEndStops = db.getBusStops(service_no, direction, true);
+//        CoolDatabase db = new CoolDatabase(this);
+//        ArrayList<BusStops> routeStartStops = db.getBusStops(service_no, direction, false);
+//        ArrayList<BusStops> routeEndStops = db.getBusStops(service_no, direction, true);
+//
+//        // Combine and find all unique bus stops
+//        Set<BusStops> container = new LinkedHashSet<>(routeStartStops);
+//        container.addAll(routeEndStops);
+//        busStops = new ArrayList<>(container);
 
-        // Combine and find all unique bus stops
-        Set<BusStops> container = new LinkedHashSet<>(routeStartStops);
-        container.addAll(routeEndStops);
-        busStops = new ArrayList<>(container);
+//        busStops = GeofenceHelper.getAllBusStops(this, service_no, direction);
+        mGeofenceList = GeofenceHelper.populateGeofenceList(this, service_no, direction);
 
         // Display those bus stops in the recycler view
         mAdapter = new BusRVAdapter(this, busStops);
         recyclerView.setAdapter(mAdapter);
-
-        // Empty list for storing geofences.
-        mGeofenceList = new ArrayList<>();
 
         // Initially set the PendingIntent used in addGeofences() and removeGeofences() to null.
         mGeofencePendingIntent = null;
@@ -219,9 +188,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements
         // LocationUpdates
         mRequestingLocationUpdates = false;
         mLastUpdateTime = "";
-
-        // Get the geofences used. Geofence data is hard coded in this sample.
-        populateGeofenceList(0);
 
         // Update values using data stored in the Bundle.
         updateValuesFromBundle(savedInstanceState);
@@ -359,98 +325,6 @@ public class OnTheRoadActivity extends AppCompatActivity implements
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Toast.makeText(this, TAG + ": Connection error - " + connectionResult.getErrorCode(),
                 Toast.LENGTH_SHORT).show();
-    }
-
-
-    /**
-     * This uses the 'haversine' formula to calculate the half-way point along a great path between
-     * two points.
-     * http://www.movable-type.co.uk/scripts/latlong.html
-     *
-     * @param lat1 latitude of point 1 in double
-     * @param lon1 longitude of point 1 in double
-     * @param lat2 latitude of point 2 in double
-     * @param lon2 longitude of point 2 in double
-     * @return Location object of midpoint
-     */
-    private Location getMidPoint(double lat1, double lon1, double lat2, double lon2) {
-
-        double dLon = Math.toRadians(lon2 - lon1);
-
-        //convert to radians
-        lat1 = Math.toRadians(lat1);
-        lat2 = Math.toRadians(lat2);
-        lon1 = Math.toRadians(lon1);
-
-        double Bx = Math.cos(lat2) * Math.cos(dLon);
-        double By = Math.cos(lat2) * Math.sin(dLon);
-        double lat3 = Math.atan2(Math.sin(lat1) + Math.sin(lat2), Math.sqrt((Math.cos(lat1) + Bx) * (Math.cos(lat1) + Bx) + By * By));
-        double lon3 = lon1 + Math.atan2(By, Math.cos(lat1) + Bx);
-
-        return createLocation(Math.toDegrees(lat3), Math.toDegrees(lon3));
-    }
-
-    /**
-     * Using latitude and longtiude, you can create Location object in Java.
-     * Provider name is unnecessary though.
-     *
-     * @param lat latitude of point
-     * @param lon longitude of point
-     * @return Location object
-     */
-    private Location createLocation(double lat, double lon) {
-        Location aLocation = new Location(""); //provider name is unnecessary
-        aLocation.setLatitude(lat);
-        aLocation.setLongitude(lon);
-
-        return aLocation;
-    }
-
-    /**
-     * This sample hard codes geofence data. A real app might dynamically create geofences based on
-     * the user's location.
-     */
-    public void populateGeofenceList(int start) {
-
-        /* Compute midpoints for all the bus stops */
-        ArrayList<Midpoint> midpoints = new ArrayList<>();
-        for (int index=start; index< busStops.size()-1; index++) {
-
-            double Point1Lat = busStops.get(index).getLatitude();
-            double Point1Lon = busStops.get(index).getLongitude();
-            double Point2Lat = busStops.get(index+1).getLatitude();
-            double Point2Lon = busStops.get(index+1).getLongitude();
-
-            Location Point1 = createLocation(Point1Lat, Point1Lon);
-            Location Point2 = createLocation(Point2Lat, Point2Lon);
-
-            Location midLocation = getMidPoint(Point1Lat, Point1Lon, Point2Lat, Point2Lon);
-            float geofenceRadius = Point1.distanceTo(Point2) / 2;
-            Midpoint aMidPoint = new Midpoint();
-            aMidPoint.setMidGeoPoint(midLocation);
-            aMidPoint.setDistanceInMeter(geofenceRadius);
-            aMidPoint.setBusStopNo(busStops.get(index+1).getBusStopNo());
-            aMidPoint.setBusStopName(busStops.get(index+1).getBusStopName());
-            midpoints.add(aMidPoint);
-        }
-
-
-        // set geofences into the intent service
-        for (int index = 0; index < midpoints.size(); index++) {
-            Midpoint aMidPoint = midpoints.get(index);
-
-            mGeofenceList.add(new Geofence.Builder()
-                    .setRequestId(index + ":" + aMidPoint.getBusStopNo() + ":" + aMidPoint.getBusStopName())
-                    .setCircularRegion(
-                            aMidPoint.getMidGeoPoint().getLatitude(),
-                            aMidPoint.getMidGeoPoint().getLongitude(),
-                            aMidPoint.getDistanceInMeter()
-                    )
-                    .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
-                    .build());
-        }
-
     }
 
     /**

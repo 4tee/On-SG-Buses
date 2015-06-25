@@ -26,8 +26,6 @@ public final class Constants {
 
     public static final String PACKAGE_NAME = "net.felixmyanmar.onsgbuses.geofencing";
 
-    //public static final String SHARED_PREFERENCES_NAME = PACKAGE_NAME + ".SHARED_PREFERENCES_NAME";
-
     public static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
     /**
@@ -41,4 +39,7 @@ public final class Constants {
      */
     public static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS =
             GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
+
+
+
 }

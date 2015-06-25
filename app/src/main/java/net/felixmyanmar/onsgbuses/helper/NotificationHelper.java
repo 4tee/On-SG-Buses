@@ -17,15 +17,8 @@ public class NotificationHelper {
 
     public static void showNotification(Context context, String notifDetails, boolean isAlarm) {
 
-
-//        notificationIntent.setFlags(
-//                Intent.FLAG_ACTIVITY_CLEAR_TOP |
-//                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
-//                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
         // Get a PendingIntent containing the entire back stack.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
-
 
         Intent notificationIntent = new Intent(context, OnTheRoadActivity.class);
         if (isAlarm) notificationIntent.setAction("exit");

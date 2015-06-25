@@ -97,7 +97,7 @@ public class GeofenceIntentService extends IntentService {
 
             tryLockDirection(found);
 
-            if (found > last_found && isLockedDir && !isActivelyRunning) {
+            if (found > last_found && isLockedDir) {
                 // send notification without the sound and vibration
                 NotificationHelper.showNotification(this, "Next Stop: " + currentBusName, false);
             }
@@ -108,13 +108,13 @@ public class GeofenceIntentService extends IntentService {
             for (int i = 0; i < selectedIds.size(); i++) {
                 if (currentStop.equals(selectedIds.get(i) + "")) {
                     if (!isActivelyRunning)
-                    NotificationHelper.showNotification(this, "Next Stop: " + currentBusName, true);
+                        NotificationHelper.showNotification(this, "Next Stop: " + currentBusName, true);
                     break;
                 }
             }
 
             // send broadcast only when the activity is on foreground
-            if (SharedPreferenceHelper.getSharedBooleanPref(this, "isActivityForeground")) {
+            if (isActivelyRunning) {
                 // Broadcast receiver to send back the info to Activity
                 Intent broadcastIntent = new Intent();
                 broadcastIntent.setAction(OnTheRoadActivity.MyBroadcastReceiver.RESPONSE);
