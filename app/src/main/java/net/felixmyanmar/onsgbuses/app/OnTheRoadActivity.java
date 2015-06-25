@@ -48,7 +48,7 @@ import net.felixmyanmar.onsgbuses.database.CoolDatabase;
 import net.felixmyanmar.onsgbuses.geofencing.Constants;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceErrorMessages;
 import net.felixmyanmar.onsgbuses.geofencing.GeofenceIntentService;
-import net.felixmyanmar.onsgbuses.geofencing.Midpoint;
+import net.felixmyanmar.onsgbuses.container.Midpoint;
 import net.felixmyanmar.onsgbuses.helper.SharedPreferenceHelper;
 
 import java.text.DateFormat;

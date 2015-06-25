@@ -1,4 +1,4 @@
-package net.felixmyanmar.onsgbuses.geofencing;
+package net.felixmyanmar.onsgbuses.container;
 
 import android.location.Location;
 
